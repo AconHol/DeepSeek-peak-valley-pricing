@@ -1,6 +1,6 @@
 ﻿# DeepSeek 峰谷计价小组件（WinUI 3 版）
 
-仿照 PVE 监视小组件（WinUI 3）技术栈编写的 DeepSeek API 峰谷计价提醒小组件。
+使用WINUI3技术栈编写的 DeepSeek API 峰谷计价提醒小组件。
 
 ## 峰谷规则（官方公告，2026-08-17 起生效）
 
