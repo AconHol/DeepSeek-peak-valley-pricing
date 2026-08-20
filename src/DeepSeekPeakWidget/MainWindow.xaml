@@ -1,0 +1,195 @@
+﻿<Window
+    x:Class="DeepSeekPeakWidget.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="DeepSeek 峰谷计价">
+
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 标题栏 -->
+        <Grid x:Name="AppTitleBar" Height="44" Padding="14,0,10,0"
+              Background="Transparent">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                <FontIcon x:Name="TitleIcon" Glyph="&#xE823;" FontSize="15" Foreground="#E8EDF4"/>
+                <TextBlock x:Name="TitleText" Text="DeepSeek 峰谷计价" FontSize="14" FontWeight="SemiBold" Foreground="#E8EDF4"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+                <Ellipse x:Name="PhaseDot" Width="8" Height="8" Fill="#4CAF50"/>
+                <TextBlock x:Name="PhaseTag" Text="谷时" FontSize="11" Foreground="#8A94A6"/>
+            </StackPanel>
+            <Button x:Name="PinBtn" Grid.Column="2" Width="30" Height="30" Margin="10,0,0,0"
+                    Padding="0" Background="Transparent" BorderThickness="0"
+                    ToolTipService.ToolTip="固定窗口位置 / 解除固定"
+                    Click="PinBtn_Click">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Grid x:Name="PinRoot" Background="{TemplateBinding Background}" CornerRadius="15">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal"/>
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="PinRoot.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Button.Template>
+                <FontIcon x:Name="PinIcon" Glyph="&#xE77A;" FontSize="13"
+                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            </Button>
+        </Grid>
+
+        <!-- 内容区 -->
+        <ScrollViewer x:Name="MainScroll" Grid.Row="1"
+                      VerticalScrollBarVisibility="Hidden"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel x:Name="ContentPanel" Padding="12,4,12,8" Spacing="8">
+                <!-- 当前时段 -->
+                <Border x:Name="StatusCard" CornerRadius="10" BorderThickness="1" Padding="12,10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="当前时段" FontSize="11" Foreground="#8A94A6"/>
+                                <TextBlock x:Name="PhaseText" Text="谷时 · 半价" FontSize="26" FontWeight="Bold"
+                                           Margin="0,2,0,0" Foreground="#4CAF50" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock x:Name="PhaseSubText" Text="API 价格按高峰时段的一半计费"
+                                           FontSize="10.5" Foreground="#9AA4B2" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <TextBlock Text="距下次切换" FontSize="11" Foreground="#8A94A6" HorizontalAlignment="Right"/>
+                                <TextBlock x:Name="CountdownText" Text="--:--:--" FontSize="18" FontWeight="SemiBold"
+                                           HorizontalAlignment="Right" Foreground="#E8EDF4" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock x:Name="NextPhaseText" Text="" FontSize="10.5" Foreground="#9AA4B2"
+                                           HorizontalAlignment="Right" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Row="1" Margin="0,12,0,0">
+                            <Border x:Name="ProgressTrack" Height="6" CornerRadius="3" Background="#2A3242"/>
+                            <Border x:Name="ProgressFill" Height="6" CornerRadius="3" Background="#4CAF50"
+                                    HorizontalAlignment="Left" Width="0"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- 24 小时时段图 -->
+                <Border x:Name="TimelineCard" CornerRadius="10" BorderThickness="1" Padding="10,8">
+                    <StackPanel Spacing="6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="24 小时时段图" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="#8A94A6" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="4">
+                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#FFB300"/>
+                                <TextBlock Text="峰时" FontSize="10" Foreground="#9AA4B2"/>
+                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#4CAF50" Margin="8,0,0,0"/>
+                                <TextBlock Text="谷时" FontSize="10" Foreground="#9AA4B2"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid x:Name="TimelineGrid" Height="24"/>
+                        <TextBlock x:Name="ScheduleHint" Text="峰时 09:00-12:00 · 14:00-18:00（其余为谷时）"
+                                   FontSize="10" Foreground="#8A94A6" HorizontalAlignment="Center" TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 接下来切换 -->
+                <Border x:Name="TransitionCard" CornerRadius="10" BorderThickness="1" Padding="10,8">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="接下来切换" FontSize="11" FontWeight="SemiBold" Foreground="#8A94A6"/>
+                        <StackPanel x:Name="TransitionList" Spacing="4"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- API 价格 -->
+                <Border x:Name="PriceCard" CornerRadius="10" BorderThickness="1" Padding="10,8">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="API 价格（元 / 百万 tokens）" FontSize="11" FontWeight="SemiBold" Foreground="#8A94A6"/>
+                        <Grid x:Name="PriceGrid"/>
+                        <TextBlock Text="价格与时段依据 DeepSeek 官方公告（2026-08-17 生效），可在设置或配置文件中调整。"
+                                   FontSize="9.5" Foreground="#6B7688" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 底部状态栏 -->
+        <Border x:Name="FooterBar" Grid.Row="2" Background="#141824" Padding="12,7,12,8">
+            <TextBlock x:Name="FooterText" Text="正在启动…" FontSize="11" Foreground="#9AA4B2"
+                       TextTrimming="CharacterEllipsis"/>
+        </Border>
+
+        <Grid.ContextFlyout>
+            <MenuFlyout Opening="MainMenu_Opening">
+                <MenuFlyoutItem Text="立即刷新" Click="MenuRefresh_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE72C;" FontSize="13"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="切换简略版 / 完整版" Click="MenuMode_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE740;" FontSize="13"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="个性化设置…" Click="MenuSettings_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE713;" FontSize="13"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="编辑配置文件" Click="MenuEdit_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE8A5;" FontSize="13"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="重新加载配置" Click="MenuReload_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE895;" FontSize="13"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="打开官方定价页面" Click="MenuPricing_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE774;" FontSize="13"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="AutoStartMenuItem" Text="开机自启" Click="MenuAutoStart_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE7F1;" FontSize="13"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="退出" Click="MenuQuit_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE8BB;" FontSize="13"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+            </MenuFlyout>
+        </Grid.ContextFlyout>
+    </Grid>
+</Window>

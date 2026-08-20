@@ -1,0 +1,7 @@
+﻿bin/
+obj/
+release/*.msix
+release/*.zip
+appxout/
+.vs/
+*.user

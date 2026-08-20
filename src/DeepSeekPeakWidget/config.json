@@ -1,0 +1,38 @@
+﻿{
+  "window": {
+    "width": 320,
+    "height": 600,
+    "opacity": 0.97,
+    "alwaysOnTop": false,
+    "backdrop": "acrylic",
+    "theme": "blue",
+    "themeMode": "dark",
+    "pinLock": false,
+    "mode": "full",
+    "left": null,
+    "top": null
+  },
+  "timezoneOffsetHours": 8,
+  "peakWindows": [
+    { "start": "09:00", "end": "12:00" },
+    { "start": "14:00", "end": "18:00" }
+  ],
+  "weekendAllValley": false,
+  "notify": {
+    "enabled": true,
+    "advanceMinutes": 10,
+    "onChange": true
+  },
+  "flash": {
+    "name": "V4 Flash",
+    "hitPeak": 0.10, "hitValley": 0.05,
+    "inputPeak": 3.00, "inputValley": 1.50,
+    "outputPeak": 9.00, "outputValley": 4.50
+  },
+  "pro": {
+    "name": "V4 Pro",
+    "hitPeak": 0.30, "hitValley": 0.15,
+    "inputPeak": 9.00, "inputValley": 4.50,
+    "outputPeak": 27.00, "outputValley": 13.50
+  }
+}
