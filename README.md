@@ -2,6 +2,13 @@
 
 使用WINUI3技术栈编写的 DeepSeek API 峰谷计价提醒小组件。
 
+[![Built with Codex](https://img.shields.io/badge/Built%20with-Codex-000000?style=flat-square&logo=openai&logoColor=white)](https://openai.com/codex)
+
+## 安装
+
+- 一键安装：使用 release 中的 `DeepSeek峰谷小组件-WinUI-安装程序.exe`，双击即可自动完成证书信任 + 安装/升级 + 启动（无需管理员，首次需系统允许旁加载）。
+- 手动安装：解压 `DeepSeek峰谷小组件-WinUI-<版本>-安装包(发给其他人).zip`，运行 `Add-AppDevPackage.ps1` 自动信任证书并安装。
+
 ## 峰谷规则（官方公告，2026-08-17 起生效）
 
 - 峰时（全价）：北京时间每天 `09:00-12:00`、`14:00-18:00`

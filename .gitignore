@@ -3,5 +3,6 @@ obj/
 release/*.msix
 release/*.zip
 appxout/
+installer/_build/
 .vs/
 *.user
