@@ -96,6 +96,26 @@
                     </Grid>
                 </Border>
 
+                <!-- DeepSeek 余额 -->
+                <Border x:Name="BalanceCard" CornerRadius="10" BorderThickness="1" Padding="12,10">
+                    <StackPanel Spacing="4">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="DeepSeek 余额" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="#8A94A6" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="BalanceStatusText" Grid.Column="1" Text="--" FontSize="10.5"
+                                       Foreground="#9AA4B2" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock x:Name="BalanceAmountText" Text="--" FontSize="22" FontWeight="Bold"
+                                   Foreground="#4CAF50" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock x:Name="BalanceDetailText" Text="" FontSize="10.5" Foreground="#9AA4B2"
+                                   TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- 24 小时时段图 -->
                 <Border x:Name="TimelineCard" CornerRadius="10" BorderThickness="1" Padding="10,8">
                     <StackPanel Spacing="6">

@@ -65,6 +65,8 @@ public class ModelPrice
 public class AppConfig
 {
     public WindowConfig Window { get; set; } = new();
+    /// <summary>DeepSeek API Key（sk-...），用于查询账户余额；留空则不显示余额。</summary>
+    public string? ApiKey { get; set; }
     public double TimezoneOffsetHours { get; set; } = 8;
     public List<PeakWindow> PeakWindows { get; set; } = new()
     {

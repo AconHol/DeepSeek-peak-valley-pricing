@@ -53,6 +53,7 @@ public sealed partial class MainWindow : Window
     private Brush _brushPeakDark = NewBrush("#9C6A00");
     private Brush _brushValleyDark = NewBrush("#2E7D32");
     private Brush _brushRow = NewBrush("#222B3A");
+    private Brush _brushError = NewBrush("#FF6B6B");
 
     private bool IsLightMode =>
         _config.Window.ThemeMode == "light" ||
@@ -180,6 +181,7 @@ public sealed partial class MainWindow : Window
         BuildTimeline();
         BuildPrices();
         UpdateDisplay();
+        _ = RefreshBalanceAsync();
     }
 
     // ---------- 窗口位置持久化（参照 WinUIEx WindowManager 方案） ----------
@@ -611,6 +613,7 @@ public sealed partial class MainWindow : Window
         _brushPeakDark = NewBrush(light ? "#E6A23C" : "#9C6A00");
         _brushValleyDark = NewBrush(light ? "#81C784" : "#2E7D32");
         _brushRow = NewBrush(light ? "#F3F3F3" : "#222B3A");
+        _brushError = NewBrush(light ? "#C42B1C" : "#FF6B6B");
 
         var textCol = light ? "#1B1B1B" : "#E8EDF4";
         var subCol = light ? "#6B6B6B" : "#8A94A6";
@@ -623,7 +626,7 @@ public sealed partial class MainWindow : Window
         PhaseSubText.Foreground = NewBrush(light ? "#6B6B6B" : "#9AA4B2");
         NextPhaseText.Foreground = NewBrush(light ? "#6B6B6B" : "#9AA4B2");
 
-        foreach (var card in new Border[] { StatusCard, TimelineCard, TransitionCard, PriceCard })
+        foreach (var card in new Border[] { StatusCard, BalanceCard, TimelineCard, TransitionCard, PriceCard })
         {
             card.Background = _brushCard;
             card.BorderBrush = _brushCardBorder;
@@ -682,6 +685,7 @@ public sealed partial class MainWindow : Window
         BuildPrices();
         UpdateDisplay();
         UpdateRefreshTimer();
+        _ = RefreshBalanceAsync();
     }
 
     /// <summary>按配置间隔自动重读 config.json，定价/时段变化无需重启即可生效。</summary>
@@ -744,6 +748,7 @@ public sealed partial class MainWindow : Window
             ResizeWindow(w, h);
         }
         TimelineCard.Visibility = showExtra;
+        BalanceCard.Visibility = showExtra;
         TransitionCard.Visibility = showExtra;
         PriceCard.Visibility = showExtra;
         FooterBar.Visibility = showExtra;
@@ -1124,6 +1129,81 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    // ---------- DeepSeek 余额 ----------
+
+    /// <summary>查询 DeepSeek 账户余额并更新底部显示（未配置 API Key 时给出提示）。</summary>
+    private async Task RefreshBalanceAsync()
+    {
+        try
+        {
+            var key = _config.ApiKey?.Trim();
+            if (string.IsNullOrEmpty(key))
+            {
+                UpdateBalanceCard("未配置", "--", "未配置 API Key（右键 → 个性化设置）", false);
+                return;
+            }
+            UpdateBalanceCard("查询中", "--", "正在查询余额…", false);
+            var bal = await DeepSeekApiClient.GetBalanceAsync(key);
+            if (bal is null)
+            {
+                UpdateBalanceCard("失败", "--", "余额获取失败", true);
+                return;
+            }
+            var info = bal.BalanceInfos?.FirstOrDefault();
+            if (info is null)
+            {
+                UpdateBalanceCard(bal.IsAvailable ? "可用" : "不可用", "--",
+                    "账户可用，余额未知", !bal.IsAvailable);
+                return;
+            }
+            var parts = new List<string>();
+            if (!string.IsNullOrEmpty(info.GrantedBalance) && info.GrantedBalance != "0.00")
+            {
+                parts.Add($"赠 ¥{info.GrantedBalance}");
+            }
+            if (!string.IsNullOrEmpty(info.ToppedUpBalance) && info.ToppedUpBalance != "0.00")
+            {
+                parts.Add($"充 ¥{info.ToppedUpBalance}");
+            }
+            var detail = parts.Count > 0 ? string.Join(" · ", parts) : "无赠金/充值明细";
+            UpdateBalanceCard(bal.IsAvailable ? "可用" : "不可用",
+                $"¥{info.TotalBalance}", detail, !bal.IsAvailable);
+        }
+        catch (Exception ex)
+        {
+            UpdateBalanceCard("失败", "--", $"余额获取失败：{ShortBalanceError(ex)}", true);
+        }
+    }
+
+    private void UpdateBalanceCard(string status, string amount, string detail, bool isError)
+    {
+        try
+        {
+            BalanceStatusText.Text = status;
+            BalanceAmountText.Text = amount;
+            BalanceDetailText.Text = detail;
+            BalanceAmountText.Foreground = isError ? _brushError : _brushOk;
+            BalanceStatusText.Foreground = isError ? _brushError : _brushSub;
+        }
+        catch { }
+    }
+
+    private static string ShortBalanceError(Exception ex)
+    {
+        if (ex is HttpRequestException hre && hre.StatusCode is System.Net.HttpStatusCode sc)
+        {
+            return sc switch
+            {
+                System.Net.HttpStatusCode.Unauthorized => "API Key 无效",
+                System.Net.HttpStatusCode.Forbidden => "无权限",
+                System.Net.HttpStatusCode.TooManyRequests => "请求过于频繁",
+                _ => $"HTTP {(int)sc}",
+            };
+        }
+        var msg = ex.Message;
+        return msg.Length > 40 ? msg[..40] + "…" : msg;
+    }
+
     private void CheckNotifications(ScheduleInfo phase)
     {
         if (!_config.Notify.Enabled) return;
@@ -1219,6 +1299,7 @@ public sealed partial class MainWindow : Window
     private void MenuRefresh_Click(object sender, RoutedEventArgs e)
     {
         UpdateDisplay();
+        _ = RefreshBalanceAsync();
     }
 
     private void MenuMode_Click(object sender, RoutedEventArgs e)

@@ -54,6 +54,17 @@
                 <CheckBox x:Name="TopmostChk" Content="窗口置顶（显示在其他窗口之上）" FontSize="12"/>
                 <CheckBox x:Name="PinLockChk" Content="固定窗口位置" FontSize="12"/>
 
+                <TextBlock Text="DeepSeek API" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="0,10,0,0"/>
+                <Grid Margin="0,4,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="API Key（查询余额）" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBox x:Name="ApiKeyBox" Grid.Column="1" Width="230" FontSize="11"
+                             PlaceholderText="sk-...（留空则不显示余额）"/>
+                </Grid>
+
                 <TextBlock Text="外观" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="0,10,0,0"/>
                 <Grid Margin="0,4,0,0">
                     <Grid.ColumnDefinitions>
@@ -159,7 +170,7 @@
                 </Grid>
                 <CheckBox x:Name="ChangeChk" Content="时段切换时立即提醒" FontSize="12"/>
 
-                <TextBlock Text="背景透明度只作用于亚克力背景，窗口内容保持不透明；背景效果为“无”时该设置不生效。定价刷新间隔到点会自动重读配置文件中的价格。峰时 09:00-12:00、14:00-18:00（北京时间），谷时价格减半。"
+                <TextBlock Text="API Key 仅保存在本地配置文件中，用于查询 DeepSeek 账户余额；留空则不显示余额。背景透明度只作用于亚克力背景，窗口内容保持不透明；背景效果为“无”时该设置不生效。定价刷新间隔到点会自动重读配置文件中的价格。峰时 09:00-12:00、14:00-18:00（北京时间），谷时价格减半。"
                            FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,8,0,4"/>
             </StackPanel>
         </ScrollViewer>

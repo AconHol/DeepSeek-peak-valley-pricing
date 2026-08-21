@@ -23,6 +23,7 @@
 - 24 小时峰谷时段图（当前小时高亮）
 - 接下来 3 次切换节点预告
 - V4 Flash / V4 Pro 峰谷实时价格表（元 / 百万 tokens）
+- DeepSeek 账户余额卡片（设置中填写 API Key 后，以卡片形式显示余额、可用状态与赠金/充值明细，右键可立即刷新）
 - 时段切换系统通知 + 提前 N 分钟提醒（默认提前 10 分钟）
 - 简略版 / 完整版、置顶、图钉锁定、深色/浅色/跟随系统、亚克力背景、5 套主题色
 - 窗口位置记忆、开机自启（StartupTask）
@@ -47,7 +48,7 @@ msbuild src/DeepSeekPeakWidget/DeepSeekPeakWidget.csproj -t:Restore;Rebuild -p:C
 ## 配置文件
 
 配置写入真实 `%LOCALAPPDATA%\DeepSeekPeakWidget\config.json`（打包应用 exe 目录只读）。
-主要字段：窗口行为、时区偏移、两个峰时段、周末全天谷时、提醒、V4 Flash / V4 Pro 峰谷单价。
+主要字段：窗口行为、`apiKey`（可选，用于查询 DeepSeek 账户余额）、时区偏移、两个峰时段、周末全天谷时、提醒、V4 Flash / V4 Pro 峰谷单价。
 
 ## 注意
 

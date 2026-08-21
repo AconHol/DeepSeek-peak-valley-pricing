@@ -40,6 +40,7 @@ public sealed partial class SettingsWindow : Window
         PinLockChk.IsChecked = _config.Window.PinLock;
         WidthBox.Text = ((int)_config.Window.Width).ToString();
         HeightBox.Text = ((int)_config.Window.Height).ToString();
+        ApiKeyBox.Text = _config.ApiKey ?? "";
 
         OffsetBox.Text = _config.TimezoneOffsetHours.ToString("0.#");
         if (_config.PeakWindows.Count > 0)
@@ -91,6 +92,9 @@ public sealed partial class SettingsWindow : Window
             _config.Window.PinLock = PinLockChk.IsChecked == true;
             _config.Window.Width = Math.Max(280, int.TryParse(WidthBox.Text, out var w) ? w : 320);
             _config.Window.Height = Math.Max(320, int.TryParse(HeightBox.Text, out var h) ? h : 600);
+            _config.ApiKey = string.IsNullOrWhiteSpace(ApiKeyBox.Text)
+                ? null
+                : ApiKeyBox.Text.Trim();
 
             _config.TimezoneOffsetHours = double.TryParse(OffsetBox.Text, out var off) ? off : 8;
 
