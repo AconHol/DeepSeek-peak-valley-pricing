@@ -110,7 +110,8 @@
                                        Foreground="#9AA4B2" VerticalAlignment="Center"/>
                         </Grid>
                         <TextBlock x:Name="BalanceAmountText" Text="--" FontSize="22" FontWeight="Bold"
-                                   Foreground="#4CAF50" TextTrimming="CharacterEllipsis"/>
+                                   Foreground="#4CAF50" TextTrimming="CharacterEllipsis"
+                                   ToolTipService.ToolTip="总余额 = 充值余额 + 赠送余额"/>
                         <TextBlock x:Name="BalanceDetailText" Text="" FontSize="10.5" Foreground="#9AA4B2"
                                    TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>

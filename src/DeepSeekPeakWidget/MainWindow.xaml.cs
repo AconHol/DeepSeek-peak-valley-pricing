@@ -1159,13 +1159,13 @@ public sealed partial class MainWindow : Window
             var parts = new List<string>();
             if (!string.IsNullOrEmpty(info.GrantedBalance) && info.GrantedBalance != "0.00")
             {
-                parts.Add($"赠 ¥{info.GrantedBalance}");
+                parts.Add($"赠送 ¥{info.GrantedBalance}");
             }
             if (!string.IsNullOrEmpty(info.ToppedUpBalance) && info.ToppedUpBalance != "0.00")
             {
-                parts.Add($"充 ¥{info.ToppedUpBalance}");
+                parts.Add($"充值 ¥{info.ToppedUpBalance}");
             }
-            var detail = parts.Count > 0 ? string.Join(" · ", parts) : "无赠金/充值明细";
+            var detail = parts.Count > 0 ? string.Join(" · ", parts) : "无充值/赠送明细";
             UpdateBalanceCard(bal.IsAvailable ? "可用" : "不可用",
                 $"¥{info.TotalBalance}", detail, !bal.IsAvailable);
         }
