@@ -40,6 +40,8 @@ public sealed partial class MainWindow : Window
     private static SUBCLASSPROC? _subclassDelegate;
     private bool _showHandled;
     private bool _restoringPlacement;
+    private int _balanceRefreshTick;
+    private bool _balanceRefreshing;
     private readonly List<Border> _timelineCells = new();
     private readonly List<PriceRow> _priceRows = new();
 
@@ -175,7 +177,16 @@ public sealed partial class MainWindow : Window
         _timer = DispatcherQueue.GetForCurrentThread().CreateTimer();
         _timer.Interval = TimeSpan.FromSeconds(1);
         _timer.IsRepeating = true;
-        _timer.Tick += (_, _) => UpdateDisplay();
+        _timer.Tick += (_, _) =>
+        {
+            UpdateDisplay();
+            // 每 300 秒（5 分钟）自动刷新一次余额，避免长时间不更新
+            if (++_balanceRefreshTick >= 300)
+            {
+                _balanceRefreshTick = 0;
+                _ = RefreshBalanceAsync();
+            }
+        };
         _timer.Start();
         UpdateRefreshTimer();
 
@@ -1211,6 +1222,8 @@ public sealed partial class MainWindow : Window
     /// <summary>查询 DeepSeek 账户余额并更新底部显示（未配置 API Key 时给出提示）。</summary>
     private async Task RefreshBalanceAsync()
     {
+        if (_balanceRefreshing) return; // 防止上一次请求未完成时重复发起
+        _balanceRefreshing = true;
         try
         {
             var key = _config.ApiKey?.Trim();
@@ -1249,6 +1262,10 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             UpdateBalanceCard("失败", "--", $"余额获取失败：{ShortBalanceError(ex)}", true);
+        }
+        finally
+        {
+            _balanceRefreshing = false;
         }
     }
 
