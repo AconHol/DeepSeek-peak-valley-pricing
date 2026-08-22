@@ -61,7 +61,6 @@ public sealed partial class MainWindow : Window
     private Brush _brushValleyDark = NewBrush("#2E7D32");
     private Brush _brushRow = NewBrush("#222B3A");
     private Brush _brushError = NewBrush("#FF6B6B");
-    private Brush _brushTimelineSel = NewBrush("#E8EDF4");
 
     private bool IsLightMode =>
         _config.Window.ThemeMode == "light" ||
@@ -709,8 +708,6 @@ public sealed partial class MainWindow : Window
         _brushValleyDark = NewBrush(light ? "#81C784" : "#2E7D32");
         _brushRow = NewBrush(light ? "#F3F3F3" : "#222B3A");
         _brushError = NewBrush(light ? "#C42B1C" : "#FF6B6B");
-        // 时段图中“当前小时”选中框：深色用白色描边，浅色用深色描边（白色会融进浅色背景）
-        _brushTimelineSel = NewBrush(light ? "#1B1B1B" : "#E8EDF4");
 
         var textCol = light ? "#1B1B1B" : "#E8EDF4";
         var subCol = light ? "#6B6B6B" : "#8A94A6";
@@ -955,8 +952,7 @@ public sealed partial class MainWindow : Window
             if (h == hour)
             {
                 cell.Background = isPeak ? _brushPeak : _brushOk;
-                cell.BorderThickness = new Thickness(2);
-                cell.BorderBrush = _brushTimelineSel;
+                cell.BorderThickness = new Thickness(0);
             }
             else
             {
