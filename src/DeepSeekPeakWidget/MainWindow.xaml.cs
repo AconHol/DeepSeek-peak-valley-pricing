@@ -1239,10 +1239,6 @@ public sealed partial class MainWindow : Window
                 UpdateBalanceCard("未配置", _amountText ?? "--", "未配置 API Key（右键 → 个性化设置）", false);
                 return;
             }
-            // 刷新期间保留旧金额，只改状态，避免闪烁
-            BalanceStatusText.Text = "查询中";
-            BalanceStatusText.Foreground = _brushSub;
-            BalanceDetailText.Text = "正在查询余额…";
             var bal = await DeepSeekApiClient.GetBalanceAsync(key);
             if (bal is null)
             {
@@ -1293,7 +1289,7 @@ public sealed partial class MainWindow : Window
 
     // ---------- 余额数字“拨轮码盘”滚动动画 ----------
 
-    private const double AmountDigitWidth = 15;
+    private const double AmountDigitWidth = 12;
     private const double AmountDigitHeight = 30;
     private const int AmountWheelCycles = 4; // 每个滚轮放 4 组 0-9，保证正向/反向都能滚动
 
@@ -1361,11 +1357,11 @@ public sealed partial class MainWindow : Window
             {
                 var width = c switch
                 {
-                    '¥' => 18.0,
-                    '.' => 8.0,
-                    ',' => 8.0,
-                    '-' => 15.0,
-                    _ => 15.0,
+                    '¥' => 16.0,
+                    '.' => 6.0,
+                    ',' => 6.0,
+                    '-' => 12.0,
+                    _ => 12.0,
                 };
                 var tb = MakeAmountChar(c.ToString(), width);
                 item.Root = tb;
