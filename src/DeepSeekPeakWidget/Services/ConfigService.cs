@@ -88,7 +88,11 @@ public class ConfigService
             {
                 var json = File.ReadAllText(_path);
                 var cfg = JsonSerializer.Deserialize<AppConfig>(json, ReadOptions);
-                if (cfg is not null) return cfg;
+                if (cfg is not null)
+                {
+                    NormalizeWeeklyRule(cfg, json);
+                    return cfg;
+                }
             }
             catch
             {
@@ -103,7 +107,29 @@ public class ConfigService
 
     public void Save(AppConfig cfg)
     {
+        // 别名同步：weekendAllValley 保留为“周六日是否全天谷时”，便于旧版回退兼容
+        cfg.WeekendAllValley = cfg.WeekValleyDays is { Count: 7 } &&
+                               cfg.WeekValleyDays[5] && cfg.WeekValleyDays[6];
         var json = JsonSerializer.Serialize(cfg, WriteOptions);
         File.WriteAllText(_path, json);
+    }
+
+    /// <summary>旧配置兼容：无 weekValleyDays 字段时，按旧 weekendAllValley 推导；仍缺失则按官方新规默认周末全天谷。</summary>
+    private static void NormalizeWeeklyRule(AppConfig cfg, string rawJson)
+    {
+        if (cfg.WeekValleyDays is { Count: 7 }) return;
+
+        if (rawJson.Contains("\"weekendAllValley\"", StringComparison.OrdinalIgnoreCase))
+        {
+            var list = new List<bool>();
+            for (var i = 0; i < 7; i++)
+            {
+                list.Add(cfg.WeekendAllValley && i is 5 or 6);
+            }
+            cfg.WeekValleyDays = list;
+            return;
+        }
+
+        cfg.WeekValleyDays = new List<bool> { false, false, false, false, false, true, true };
     }
 }

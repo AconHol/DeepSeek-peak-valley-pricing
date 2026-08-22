@@ -156,7 +156,18 @@
                     <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="至" FontSize="12" Margin="4,0" VerticalAlignment="Center"/>
                     <TextBox x:Name="Peak2EndBox" Grid.Column="3" Width="52" Text="18:00" HorizontalTextAlignment="Center"/>
                 </Grid>
-                <CheckBox x:Name="WeekendChk" Content="周末及节假日全天按谷时计算" FontSize="12"/>
+                <TextBlock Text="每周规则（勾选=该天全天按谷时）" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="0,10,0,0"/>
+                <TextBlock Text="官方新规：周六/周日全天谷价（2026-08-23 起生效）；未勾选的天按上方峰谷时段计算。" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,4"/>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <CheckBox x:Name="WeekChk0" Content="周一" FontSize="11"/>
+                    <CheckBox x:Name="WeekChk1" Content="周二" FontSize="11"/>
+                    <CheckBox x:Name="WeekChk2" Content="周三" FontSize="11"/>
+                    <CheckBox x:Name="WeekChk3" Content="周四" FontSize="11"/>
+                    <CheckBox x:Name="WeekChk4" Content="周五" FontSize="11"/>
+                    <CheckBox x:Name="WeekChk5" Content="周六" FontSize="11"/>
+                    <CheckBox x:Name="WeekChk6" Content="周日" FontSize="11"/>
+                </StackPanel>
+                <Button x:Name="WeekendDefaultBtn" Content="恢复官方默认（仅周六/周日全天谷）" FontSize="11" HorizontalAlignment="Left" Padding="12,5" Margin="0,4,0,0" Click="WeekendDefaultBtn_Click"/>
                 <Grid Margin="0,4,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -178,7 +189,7 @@
                 </Grid>
                 <CheckBox x:Name="ChangeChk" Content="时段切换时立即提醒" FontSize="12"/>
 
-                <TextBlock Text="API Key 仅保存在本地配置文件中，用于查询 DeepSeek 账户余额；留空则不显示余额。背景透明度只作用于亚克力背景，窗口内容保持不透明；背景效果为“无”时该设置不生效。定价刷新间隔到点会自动重读配置文件中的价格。峰时 09:00-12:00、14:00-18:00（北京时间），谷时价格减半。"
+                <TextBlock Text="API Key 仅保存在本地配置文件中，用于查询 DeepSeek 账户余额；留空则不显示余额。背景透明度只作用于亚克力背景，窗口内容保持不透明；背景效果为“无”时该设置不生效。定价刷新间隔到点会自动重读配置文件中的价格。峰时 09:00-12:00、14:00-18:00（北京时间），谷时价格减半；周六/周日全天按谷价。"
                            FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,8,0,4"/>
             </StackPanel>
         </ScrollViewer>

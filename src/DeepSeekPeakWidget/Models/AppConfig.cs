@@ -73,6 +73,9 @@ public class AppConfig
         new() { Start = "09:00", End = "12:00" },
         new() { Start = "14:00", End = "18:00" },
     };
+    /// <summary>每周规则：周一..周日是否全天按谷时（官方 2026-08-23 起周六/周日全天谷价）。</summary>
+    public List<bool> WeekValleyDays { get; set; } = new() { false, false, false, false, false, true, true };
+    /// <summary>旧版“周末全天谷时”开关，仅用于旧配置兼容与别名同步。</summary>
     public bool WeekendAllValley { get; set; }
     public NotifyConfig Notify { get; set; } = new();
     public int RefreshMinutes { get; set; } = 30;

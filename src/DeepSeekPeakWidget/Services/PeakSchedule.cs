@@ -26,8 +26,16 @@ public class PeakSchedule
     /// <summary>按配置时区偏移后的“时段时间”。</summary>
     public DateTime ScheduleNow => DateTime.UtcNow.AddHours(_cfg.TimezoneOffsetHours);
 
-    private bool DayAllValley(DateTime d) =>
-        _cfg.WeekendAllValley && (d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday);
+    private bool DayAllValley(DateTime d)
+    {
+        if (_cfg.WeekValleyDays is { Count: 7 } list)
+        {
+            // WeekValleyDays 顺序为周一..周日；DayOfWeek.Sunday=0，故先归一到 0..6（周一=0）
+            var idx = d.DayOfWeek == DayOfWeek.Sunday ? 6 : (int)d.DayOfWeek - 1;
+            return list[idx];
+        }
+        return _cfg.WeekendAllValley && (d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday);
+    }
 
     private IEnumerable<(DateTime Time, bool IsPeak)> DayEvents(DateTime day)
     {
@@ -63,14 +71,26 @@ public class PeakSchedule
     public ScheduleInfo Current()
     {
         var now = ScheduleNow;
-        var events = DayEvents(now.Date)
+        var events = DayEvents(now.Date.AddDays(-2))
+            .Concat(DayEvents(now.Date.AddDays(-1)))
+            .Concat(DayEvents(now.Date))
             .Concat(DayEvents(now.Date.AddDays(1)))
             .Concat(DayEvents(now.Date.AddDays(2)))
             .OrderBy(x => x.Time)
             .ToList();
-        var cur = events[0];
-        (DateTime Time, bool IsPeak)? nxt = null;
+        // 合并跨午夜连续的相同时段，得到当前段真实起点
+        // （避免周末全天谷时跨天后进度条在午夜跳变、并让进度条随“距下次切换”连续走满）
+        var merged = new List<(DateTime Time, bool IsPeak)>();
         foreach (var ev in events)
+        {
+            if (merged.Count == 0 || ev.IsPeak != merged[^1].IsPeak)
+            {
+                merged.Add(ev);
+            }
+        }
+        var cur = merged[0];
+        (DateTime Time, bool IsPeak)? nxt = null;
+        foreach (var ev in merged)
         {
             if (ev.Time <= now)
             {

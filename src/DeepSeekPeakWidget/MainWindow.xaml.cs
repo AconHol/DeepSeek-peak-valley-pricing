@@ -942,10 +942,32 @@ public sealed partial class MainWindow : Window
         for (var i = 0; i < _config.PeakWindows.Count; i++)
         {
             if (i > 0) sb.Append(" · ");
-            sb.Append($"峰时 {_config.PeakWindows[i].Start}-{_config.PeakWindows[i].End}");
+            sb.Append(i == 0
+                ? $"峰时 {_config.PeakWindows[i].Start}-{_config.PeakWindows[i].End}"
+                : $"{_config.PeakWindows[i].Start}-{_config.PeakWindows[i].End}");
         }
         sb.Append("（其余为谷时）");
-        if (_config.WeekendAllValley) sb.Append("，周末及节假日全天谷时");
+        if (_config.WeekValleyDays is { Count: 7 } list && list.Any(x => x))
+        {
+            var dayNames = new[] { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
+            var names = new List<string>();
+            for (var i = 0; i < 7; i++)
+            {
+                if (list[i]) names.Add(dayNames[i]);
+            }
+            if (names.Count == 7)
+            {
+                sb.Append("，每日全天谷时");
+            }
+            else if (names.Count == 2 && list[5] && list[6])
+            {
+                sb.Append("，周六/周日全天谷时");
+            }
+            else
+            {
+                sb.Append($"，{string.Join("/", names)}全天谷时");
+            }
+        }
         ScheduleHint.Text = sb.ToString();
     }
 
@@ -1147,7 +1169,7 @@ public sealed partial class MainWindow : Window
                 inner.Children.Add(dot);
                 var timeTb = new TextBlock
                 {
-                    Text = $"{t.Time:HH:mm} 进入{(t.IsPeak ? "峰时" : "谷时")}",
+                    Text = FormatTransitionLabel(t.Time, phase.Now, t.IsPeak),
                     FontSize = 11,
                     Foreground = _brushText,
                     Margin = new Thickness(6, 0, 0, 0),
@@ -1173,15 +1195,22 @@ public sealed partial class MainWindow : Window
         }
         else
         {
-            // 仅更新剩余时间文本
+            // 仅更新剩余时间与跨天日期标签
             var idx = 0;
             foreach (var t in trans)
             {
                 if (idx < TransitionList.Children.Count &&
                     TransitionList.Children[idx] is Border b && b.Child is Grid g &&
-                    g.Children.Count > 2 && g.Children[2] is TextBlock remain)
+                    g.Children.Count > 2)
                 {
-                    remain.Text = FormatRemain(t.Time - phase.Now);
+                    if (g.Children[1] is TextBlock timeTb)
+                    {
+                        timeTb.Text = FormatTransitionLabel(t.Time, phase.Now, t.IsPeak);
+                    }
+                    if (g.Children[2] is TextBlock remain)
+                    {
+                        remain.Text = FormatRemain(t.Time - phase.Now);
+                    }
                 }
                 idx++;
             }
@@ -1220,7 +1249,7 @@ public sealed partial class MainWindow : Window
             else if (phase.NextTime is DateTime nt)
             {
                 CountdownText.Text = FormatDuration(nt - phase.Now);
-                NextPhaseText.Text = $"{nt:HH:mm} 进入{(phase.NextIsPeak ? "峰时" : "谷时")}";
+                NextPhaseText.Text = FormatTransitionLabel(nt, phase.Now, phase.NextIsPeak);
                 var total = (nt - phase.SegmentStart).TotalSeconds;
                 _frac = total > 0 ? (phase.Now - phase.SegmentStart).TotalSeconds / total : 0;
             }
@@ -1569,6 +1598,23 @@ public sealed partial class MainWindow : Window
         if (ts.TotalSeconds < 0) return "00:00:00";
         return $"{(int)ts.TotalHours:00}:{ts.Minutes:00}:{ts.Seconds:00}";
     }
+
+    private static string FormatTransitionLabel(DateTime t, DateTime now, bool isPeak)
+    {
+        var dayPrefix = t.Date == now.Date ? "" : WeekdayNameZh(t) + " ";
+        return $"{dayPrefix}{t:HH:mm} 进入{(isPeak ? "峰时" : "谷时")}";
+    }
+
+    private static string WeekdayNameZh(DateTime d) => d.DayOfWeek switch
+    {
+        DayOfWeek.Monday => "周一",
+        DayOfWeek.Tuesday => "周二",
+        DayOfWeek.Wednesday => "周三",
+        DayOfWeek.Thursday => "周四",
+        DayOfWeek.Friday => "周五",
+        DayOfWeek.Saturday => "周六",
+        _ => "周日",
+    };
 
     private static string FormatRemain(TimeSpan ts)
     {

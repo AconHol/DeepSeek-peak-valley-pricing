@@ -22,7 +22,7 @@ public sealed partial class SettingsWindow : Window
         SetTitleBar(SettingsTitleBar);
         if (AppWindow is not null)
         {
-            AppWindow.Resize(new Windows.Graphics.SizeInt32(470, 640));
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(470, 720));
         }
 
         var light = _config.Window.ThemeMode == "light" ||
@@ -54,7 +54,14 @@ public sealed partial class SettingsWindow : Window
             Peak2StartBox.Text = _config.PeakWindows[1].Start;
             Peak2EndBox.Text = _config.PeakWindows[1].End;
         }
-        WeekendChk.IsChecked = _config.WeekendAllValley;
+        var week = _config.WeekValleyDays;
+        for (var i = 0; i < 7; i++)
+        {
+            if (RootGrid.FindName($"WeekChk{i}") is CheckBox cb)
+            {
+                cb.IsChecked = week is { Count: 7 } && week[i];
+            }
+        }
         RefreshBox.Text = _config.RefreshMinutes.ToString();
         NotifyChk.IsChecked = _config.Notify.Enabled;
         AdvanceBox.Text = _config.Notify.AdvanceMinutes.ToString();
@@ -125,7 +132,12 @@ public sealed partial class SettingsWindow : Window
                 }
             }
             _config.PeakWindows = windows;
-            _config.WeekendAllValley = WeekendChk.IsChecked == true;
+            var week = new List<bool>();
+            for (var i = 0; i < 7; i++)
+            {
+                week.Add(RootGrid.FindName($"WeekChk{i}") is CheckBox cb && cb.IsChecked == true);
+            }
+            _config.WeekValleyDays = week;
             _config.RefreshMinutes = Math.Max(0,
                 int.TryParse(RefreshBox.Text, out var r) ? r : 30);
             _config.Notify.Enabled = NotifyChk.IsChecked == true;
@@ -149,6 +161,18 @@ public sealed partial class SettingsWindow : Window
         var enabled = mode != "none";
         OpacitySlider.IsEnabled = enabled;
         OpacityText.Text = enabled ? OpacitySlider.Value.ToString("0.00") : "仅亚克力生效";
+    }
+
+    private void WeekendDefaultBtn_Click(object sender, RoutedEventArgs e)
+    {
+        for (var i = 0; i < 5; i++)
+        {
+            if (RootGrid.FindName($"WeekChk{i}") is CheckBox cb) cb.IsChecked = false;
+        }
+        for (var i = 5; i < 7; i++)
+        {
+            if (RootGrid.FindName($"WeekChk{i}") is CheckBox cb) cb.IsChecked = true;
+        }
     }
 
     private void ShowInvalid()
