@@ -709,8 +709,8 @@ public sealed partial class MainWindow : Window
         _brushValleyDark = NewBrush(light ? "#81C784" : "#2E7D32");
         _brushRow = NewBrush(light ? "#F3F3F3" : "#222B3A");
         _brushError = NewBrush(light ? "#C42B1C" : "#FF6B6B");
-        // 时段图中“当前小时”选中框：浅色用白色描边形成亮环，深色用浅色描边
-        _brushTimelineSel = NewBrush(light ? "#FFFFFF" : "#E8EDF4");
+        // 时段图中“当前小时”选中框：深色用白色描边，浅色用深色描边（白色会融进浅色背景）
+        _brushTimelineSel = NewBrush(light ? "#1B1B1B" : "#E8EDF4");
 
         var textCol = light ? "#1B1B1B" : "#E8EDF4";
         var subCol = light ? "#6B6B6B" : "#8A94A6";
