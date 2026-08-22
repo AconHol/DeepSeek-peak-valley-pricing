@@ -911,10 +911,15 @@ public sealed partial class MainWindow : Window
     {
         TimelineGrid.ColumnDefinitions.Clear();
         TimelineGrid.Children.Clear();
+        TimelineMarkerRow.ColumnDefinitions.Clear();
         _timelineCells.Clear();
         for (var h = 0; h < 24; h++)
         {
             TimelineGrid.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = new GridLength(1, GridUnitType.Star),
+            });
+            TimelineMarkerRow.ColumnDefinitions.Add(new ColumnDefinition
             {
                 Width = new GridLength(1, GridUnitType.Star),
             });
@@ -930,6 +935,8 @@ public sealed partial class MainWindow : Window
             TimelineGrid.Children.Add(cell);
             _timelineCells.Add(cell);
         }
+        TimelineMarkerRow.Children.Clear();
+        TimelineMarkerRow.Children.Add(TimelineMarker);
         UpdateTimeline();
         var sb = new System.Text.StringBuilder();
         for (var i = 0; i < _config.PeakWindows.Count; i++)
@@ -945,6 +952,14 @@ public sealed partial class MainWindow : Window
     private void UpdateTimeline()
     {
         var hour = _schedule.ScheduleNow.Hour;
+        var hourIsPeak = _schedule.IsPeakHour(hour);
+        // “当前时段”指示三角：定位到当前小时格子下方，随峰/谷变色
+        try
+        {
+            Grid.SetColumn(TimelineMarker, hour);
+            TimelineMarker.Fill = hourIsPeak ? _brushPeak : _brushOk;
+        }
+        catch { }
         for (var h = 0; h < 24 && h < _timelineCells.Count; h++)
         {
             var cell = _timelineCells[h];

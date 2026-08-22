@@ -133,7 +133,17 @@
                                 <TextBlock x:Name="LegendValleyText" Text="谷时" FontSize="10" Foreground="#9AA4B2"/>
                             </StackPanel>
                         </Grid>
-                        <Grid x:Name="TimelineGrid" Height="24"/>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="24"/>
+                                <RowDefinition Height="10"/>
+                            </Grid.RowDefinitions>
+                            <Grid x:Name="TimelineGrid" Height="24"/>
+                            <Grid x:Name="TimelineMarkerRow" Grid.Row="1" Height="10" IsHitTestVisible="False">
+                                <Path x:Name="TimelineMarker" Data="M4,2 L8,10 L0,10 Z" Width="8" Height="10"
+                                      HorizontalAlignment="Center" VerticalAlignment="Top" Fill="#4CAF50"/>
+                            </Grid>
+                        </Grid>
                         <TextBlock x:Name="ScheduleHint" Text="峰时 09:00-12:00 · 14:00-18:00（其余为谷时）"
                                    FontSize="10" Foreground="#8A94A6" HorizontalAlignment="Center" TextAlignment="Center"/>
                     </StackPanel>
