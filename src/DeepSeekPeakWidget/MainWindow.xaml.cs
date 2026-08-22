@@ -119,6 +119,7 @@ public sealed partial class MainWindow : Window
                     ApplySavedPlacementCorrection();
                 };
                 cal.Start();
+                ScheduleCloakCheck();
                 try
                 {
                     var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
@@ -308,6 +309,82 @@ public sealed partial class MainWindow : Window
                 cfg.NormalRight!.Value - cfg.NormalLeft!.Value,
                 cfg.NormalBottom!.Value - cfg.NormalTop!.Value,
                 0x0001 | 0x0010); // SWP_NOZORDER | SWP_NOACTIVATE
+        }
+        catch { }
+    }
+
+    private int _cloakCheckIndex;
+    private static readonly int[] _cloakCheckDelays = { 5, 15, 30 };
+
+    private static string CloakRelaunchFlagPath => System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "DeepSeekPeakWidget", "cloak-relaunch-flag");
+
+    /// <summary>
+    /// 开机自启时若窗口被 DWM 遮盖（进程在、桌面看不到），定时检查并自愈重启。
+    /// 多次检查均正常则删除标记；本次开机已因遮盖重启过则不再重复，避免循环。
+    /// </summary>
+    private void ScheduleCloakCheck()
+    {
+        try
+        {
+            if (System.IO.File.Exists(CloakRelaunchFlagPath)) return;
+            _cloakCheckIndex = 0;
+            var timer = DispatcherQueue.GetForCurrentThread().CreateTimer();
+            timer.IsRepeating = false;
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                if (IsWindowCloaked())
+                {
+                    RelaunchSelf();
+                    return;
+                }
+                _cloakCheckIndex++;
+                if (_cloakCheckIndex < _cloakCheckDelays.Length)
+                {
+                    timer.Interval = TimeSpan.FromSeconds(_cloakCheckDelays[_cloakCheckIndex]);
+                    timer.Start();
+                }
+                else
+                {
+                    try { System.IO.File.Delete(CloakRelaunchFlagPath); } catch { }
+                }
+            };
+            timer.Interval = TimeSpan.FromSeconds(_cloakCheckDelays[0]);
+            timer.Start();
+        }
+        catch { }
+    }
+
+    private bool IsWindowCloaked()
+    {
+        try
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            var cloaked = 0;
+            DwmGetWindowAttribute(hwnd, 14, out cloaked, sizeof(int)); // DWMWA_CLOAKED = 14
+            return cloaked != 0;
+        }
+        catch { return false; }
+    }
+
+    /// <summary>保存配置后以 explorer 重新启动打包应用，再关闭当前实例。</summary>
+    private void RelaunchSelf()
+    {
+        try
+        {
+            _configService.Save(_config);
+            try { System.IO.File.WriteAllText(CloakRelaunchFlagPath, DateTime.Now.ToString("O")); } catch { }
+            var aumid = $"{Windows.ApplicationModel.Package.Current.Id.FamilyName}!App";
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"shell:AppsFolder\\{aumid}",
+                UseShellExecute = true,
+            };
+            System.Diagnostics.Process.Start(psi);
+            Close();
         }
         catch { }
     }
@@ -1545,6 +1622,9 @@ public sealed partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool SetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out int pvAttribute, int cbAttribute);
 
     [DllImport("comctl32.dll")]
     private static extern bool SetWindowSubclass(IntPtr hWnd, IntPtr pfnSubclass, UIntPtr uIdSubclass, IntPtr dwRefData);
