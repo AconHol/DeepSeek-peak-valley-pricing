@@ -180,8 +180,9 @@ public sealed partial class MainWindow : Window
         _timer.Tick += (_, _) =>
         {
             UpdateDisplay();
-            // 每 300 秒（5 分钟）自动刷新一次余额，避免长时间不更新
-            if (++_balanceRefreshTick >= 300)
+            // 按配置的秒数自动刷新余额（0 = 关闭自动刷新）
+            var balanceSeconds = Math.Max(0, _config.BalanceRefreshSeconds);
+            if (balanceSeconds > 0 && ++_balanceRefreshTick >= balanceSeconds)
             {
                 _balanceRefreshTick = 0;
                 _ = RefreshBalanceAsync();
@@ -773,6 +774,7 @@ public sealed partial class MainWindow : Window
         BuildPrices();
         UpdateDisplay();
         UpdateRefreshTimer();
+        _balanceRefreshTick = 0; // 应用新间隔，立即按新配置计时
         _ = RefreshBalanceAsync();
     }
 

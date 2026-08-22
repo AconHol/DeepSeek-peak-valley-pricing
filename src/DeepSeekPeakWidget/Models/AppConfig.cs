@@ -76,6 +76,8 @@ public class AppConfig
     public bool WeekendAllValley { get; set; }
     public NotifyConfig Notify { get; set; } = new();
     public int RefreshMinutes { get; set; } = 30;
+    /// <summary>余额自动刷新间隔（秒，0=关闭自动刷新）。</summary>
+    public int BalanceRefreshSeconds { get; set; } = 300;
     public ModelPrice Flash { get; set; } = new()
     {
         Name = "V4 Flash",

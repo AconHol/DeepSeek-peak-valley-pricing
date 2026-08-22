@@ -13,6 +13,7 @@
     "top": null
   },
   "apiKey": "",
+  "balanceRefreshSeconds": 300,
   "timezoneOffsetHours": 8,
   "peakWindows": [
     { "start": "09:00", "end": "12:00" },

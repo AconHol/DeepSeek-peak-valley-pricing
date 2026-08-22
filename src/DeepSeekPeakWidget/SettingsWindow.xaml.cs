@@ -41,6 +41,7 @@ public sealed partial class SettingsWindow : Window
         WidthBox.Text = ((int)_config.Window.Width).ToString();
         HeightBox.Text = ((int)_config.Window.Height).ToString();
         ApiKeyBox.Text = _config.ApiKey ?? "";
+        BalanceRefreshBox.Text = _config.BalanceRefreshSeconds.ToString();
 
         OffsetBox.Text = _config.TimezoneOffsetHours.ToString("0.#");
         if (_config.PeakWindows.Count > 0)
@@ -95,6 +96,8 @@ public sealed partial class SettingsWindow : Window
             _config.ApiKey = string.IsNullOrWhiteSpace(ApiKeyBox.Text)
                 ? null
                 : ApiKeyBox.Text.Trim();
+            _config.BalanceRefreshSeconds = Math.Max(0,
+                int.TryParse(BalanceRefreshBox.Text, out var br) ? br : 300);
 
             _config.TimezoneOffsetHours = double.TryParse(OffsetBox.Text, out var off) ? off : 8;
 
