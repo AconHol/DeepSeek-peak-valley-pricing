@@ -61,6 +61,7 @@ public sealed partial class MainWindow : Window
     private Brush _brushValleyDark = NewBrush("#2E7D32");
     private Brush _brushRow = NewBrush("#222B3A");
     private Brush _brushError = NewBrush("#FF6B6B");
+    private Brush _brushTimelineSel = NewBrush("#E8EDF4");
 
     private bool IsLightMode =>
         _config.Window.ThemeMode == "light" ||
@@ -708,6 +709,8 @@ public sealed partial class MainWindow : Window
         _brushValleyDark = NewBrush(light ? "#81C784" : "#2E7D32");
         _brushRow = NewBrush(light ? "#F3F3F3" : "#222B3A");
         _brushError = NewBrush(light ? "#C42B1C" : "#FF6B6B");
+        // 时段图中“当前小时”选中框：浅色用白色描边形成亮环，深色用浅色描边
+        _brushTimelineSel = NewBrush(light ? "#FFFFFF" : "#E8EDF4");
 
         var textCol = light ? "#1B1B1B" : "#E8EDF4";
         var subCol = light ? "#6B6B6B" : "#8A94A6";
@@ -719,6 +722,10 @@ public sealed partial class MainWindow : Window
         ScheduleHint.Foreground = NewBrush(subCol);
         PhaseSubText.Foreground = NewBrush(light ? "#6B6B6B" : "#9AA4B2");
         NextPhaseText.Foreground = NewBrush(light ? "#6B6B6B" : "#9AA4B2");
+        LegendPeakRect.Fill = _brushPeak;
+        LegendValleyRect.Fill = _brushOk;
+        LegendPeakText.Foreground = NewBrush(subCol);
+        LegendValleyText.Foreground = NewBrush(subCol);
 
         foreach (var card in new Border[] { StatusCard, BalanceCard, TimelineCard, TransitionCard, PriceCard })
         {
@@ -948,8 +955,8 @@ public sealed partial class MainWindow : Window
             if (h == hour)
             {
                 cell.Background = isPeak ? _brushPeak : _brushOk;
-                cell.BorderThickness = new Thickness(1.5);
-                cell.BorderBrush = _brushText;
+                cell.BorderThickness = new Thickness(2);
+                cell.BorderBrush = _brushTimelineSel;
             }
             else
             {
