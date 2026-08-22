@@ -1464,6 +1464,17 @@ public sealed partial class MainWindow : Window
         if (animations.Count == 0) return;
 
         _amountStoryboard?.Stop();
+        // 修复：Stop() 会让已完成的动画回退到“构建面板时”的基准位置，
+        // 导致本次未变化的数字滚轮显示陈旧值（常见表现为金额大/小 1 元）。
+        // 先把所有滚轮重新锚定到各自当前数字，再开始新一轮动画。
+        foreach (var item in _amountDigits)
+        {
+            if (item.IsDigit && item.Wheel is not null)
+            {
+                ((TranslateTransform)item.Wheel.RenderTransform).Y =
+                    -(10 + item.CurrentDigit) * AmountDigitHeight;
+            }
+        }
         var sb = new Storyboard();
         foreach (var a in animations)
         {
