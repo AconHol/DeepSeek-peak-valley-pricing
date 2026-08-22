@@ -7,6 +7,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Shapes;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
@@ -42,6 +43,10 @@ public sealed partial class MainWindow : Window
     private bool _restoringPlacement;
     private int _balanceRefreshTick;
     private bool _balanceRefreshing;
+    private string? _amountText;
+    private Brush _amountBrush = NewBrush("#4CAF50");
+    private Storyboard? _amountStoryboard;
+    private readonly List<OdometerDigit> _amountDigits = new();
     private readonly List<Border> _timelineCells = new();
     private readonly List<PriceRow> _priceRows = new();
 
@@ -1231,20 +1236,23 @@ public sealed partial class MainWindow : Window
             var key = _config.ApiKey?.Trim();
             if (string.IsNullOrEmpty(key))
             {
-                UpdateBalanceCard("未配置", "--", "未配置 API Key（右键 → 个性化设置）", false);
+                UpdateBalanceCard("未配置", _amountText ?? "--", "未配置 API Key（右键 → 个性化设置）", false);
                 return;
             }
-            UpdateBalanceCard("查询中", "--", "正在查询余额…", false);
+            // 刷新期间保留旧金额，只改状态，避免闪烁
+            BalanceStatusText.Text = "查询中";
+            BalanceStatusText.Foreground = _brushSub;
+            BalanceDetailText.Text = "正在查询余额…";
             var bal = await DeepSeekApiClient.GetBalanceAsync(key);
             if (bal is null)
             {
-                UpdateBalanceCard("失败", "--", "余额获取失败", true);
+                UpdateBalanceCard("失败", _amountText ?? "--", "余额获取失败", true);
                 return;
             }
             var info = bal.BalanceInfos?.FirstOrDefault();
             if (info is null)
             {
-                UpdateBalanceCard(bal.IsAvailable ? "可用" : "不可用", "--",
+                UpdateBalanceCard(bal.IsAvailable ? "可用" : "不可用", _amountText ?? "--",
                     "账户可用，余额未知", !bal.IsAvailable);
                 return;
             }
@@ -1263,7 +1271,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            UpdateBalanceCard("失败", "--", $"余额获取失败：{ShortBalanceError(ex)}", true);
+            UpdateBalanceCard("失败", _amountText ?? "--", $"余额获取失败：{ShortBalanceError(ex)}", true);
         }
         finally
         {
@@ -1276,12 +1284,189 @@ public sealed partial class MainWindow : Window
         try
         {
             BalanceStatusText.Text = status;
-            BalanceAmountText.Text = amount;
-            BalanceDetailText.Text = detail;
-            BalanceAmountText.Foreground = isError ? _brushError : _brushOk;
             BalanceStatusText.Foreground = isError ? _brushError : _brushSub;
+            BalanceDetailText.Text = detail;
+            SetAmount(amount, isError ? _brushError : _brushOk);
         }
         catch { }
+    }
+
+    // ---------- 余额数字“拨轮码盘”滚动动画 ----------
+
+    private const double AmountDigitWidth = 15;
+    private const double AmountDigitHeight = 30;
+    private const int AmountWheelCycles = 4; // 每个滚轮放 4 组 0-9，保证正向/反向都能滚动
+
+    private sealed class OdometerDigit
+    {
+        public bool IsDigit;
+        public UIElement Root = null!;
+        public StackPanel? Wheel;
+        public int CurrentDigit;
+        public List<TextBlock> Texts = new();
+    }
+
+    private TextBlock MakeAmountChar(string text, double width)
+    {
+        return new TextBlock
+        {
+            Text = text,
+            FontSize = 22,
+            FontWeight = Microsoft.UI.Text.FontWeights.Bold,
+            Width = width,
+            Height = AmountDigitHeight,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextAlignment = TextAlignment.Center,
+            Foreground = _amountBrush,
+        };
+    }
+
+    /// <summary>按金额字符串重建码盘（形状变化时调用，无动画）。</summary>
+    private void BuildAmountPanel(string amount)
+    {
+        BalanceAmountPanel.Children.Clear();
+        _amountDigits.Clear();
+        foreach (var c in amount)
+        {
+            var item = new OdometerDigit();
+            if (char.IsDigit(c))
+            {
+                item.IsDigit = true;
+                var cell = new Grid
+                {
+                    Width = AmountDigitWidth,
+                    Height = AmountDigitHeight,
+                    Clip = new RectangleGeometry
+                    {
+                        Rect = new Windows.Foundation.Rect(0, 0, AmountDigitWidth, AmountDigitHeight),
+                    },
+                };
+                var wheel = new StackPanel();
+                wheel.RenderTransform = new TranslateTransform();
+                for (var cycle = 0; cycle < AmountWheelCycles; cycle++)
+                {
+                    for (var d = 0; d < 10; d++)
+                    {
+                        var tb = MakeAmountChar(d.ToString(), AmountDigitWidth);
+                        wheel.Children.Add(tb);
+                        item.Texts.Add(tb);
+                    }
+                }
+                item.Wheel = wheel;
+                cell.Children.Add(wheel);
+                item.Root = cell;
+            }
+            else
+            {
+                var width = c switch
+                {
+                    '¥' => 18.0,
+                    '.' => 8.0,
+                    ',' => 8.0,
+                    '-' => 15.0,
+                    _ => 15.0,
+                };
+                var tb = MakeAmountChar(c.ToString(), width);
+                item.Root = tb;
+                item.Texts.Add(tb);
+            }
+            _amountDigits.Add(item);
+            BalanceAmountPanel.Children.Add(item.Root);
+        }
+
+        // 把滚轮定位到实际数字（中间周期）
+        for (var i = 0; i < amount.Length && i < _amountDigits.Count; i++)
+        {
+            var item = _amountDigits[i];
+            if (!item.IsDigit || item.Wheel is null) continue;
+            var d = amount[i] - '0';
+            item.CurrentDigit = d;
+            item.Wheel.RenderTransform = new TranslateTransform { Y = -(10 + d) * AmountDigitHeight };
+        }
+    }
+
+    /// <summary>更新金额显示：形状相同则滚动动画，形状变化则重建。</summary>
+    private void SetAmount(string amount, Brush brush)
+    {
+        _amountBrush = brush;
+        ApplyAmountBrush();
+        if (amount == _amountText) return;
+        if (!CanAnimateAmount(_amountText, amount))
+        {
+            BuildAmountPanel(amount);
+        }
+        else
+        {
+            AnimateAmountDigits(_amountText!, amount);
+        }
+        _amountText = amount;
+    }
+
+    private void ApplyAmountBrush()
+    {
+        foreach (var item in _amountDigits)
+        {
+            foreach (var tb in item.Texts)
+            {
+                tb.Foreground = _amountBrush;
+            }
+        }
+    }
+
+    private static bool CanAnimateAmount(string? oldAmount, string newAmount)
+    {
+        if (string.IsNullOrEmpty(oldAmount) || oldAmount.Length != newAmount.Length) return false;
+        for (var i = 0; i < oldAmount.Length; i++)
+        {
+            if (!char.IsDigit(oldAmount[i]) && oldAmount[i] != newAmount[i]) return false;
+        }
+        return true;
+    }
+
+    /// <summary>逐位滚动到新数字（从右向左级联，模拟机械码盘）。</summary>
+    private void AnimateAmountDigits(string oldAmount, string newAmount)
+    {
+        var digitCount = oldAmount.Count(char.IsDigit);
+        var animations = new List<(OdometerDigit Digit, int FromIdx, int ToIdx, int FromRight, int NewDigit)>();
+        var seen = 0;
+        for (var i = 0; i < oldAmount.Length && i < _amountDigits.Count; i++)
+        {
+            var item = _amountDigits[i];
+            if (!item.IsDigit) continue;
+            var oldDigit = oldAmount[i] - '0';
+            var newDigit = newAmount[i] - '0';
+            seen++;
+            if (oldDigit == newDigit) continue;
+
+            // 走最短路径（9→0 会绕回另一端滚动，接近真实码盘进位）
+            var delta = newDigit - oldDigit;
+            if (delta > 5) delta -= 10;
+            if (delta < -5) delta += 10;
+            animations.Add((item, 10 + oldDigit, 10 + oldDigit + delta, digitCount - seen, newDigit));
+        }
+        if (animations.Count == 0) return;
+
+        _amountStoryboard?.Stop();
+        var sb = new Storyboard();
+        foreach (var a in animations)
+        {
+            var durationMs = 300 + Math.Abs(a.ToIdx - a.FromIdx) * 45;
+            var da = new DoubleAnimation
+            {
+                From = -a.FromIdx * AmountDigitHeight,
+                To = -a.ToIdx * AmountDigitHeight,
+                Duration = TimeSpan.FromMilliseconds(durationMs),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                BeginTime = TimeSpan.FromMilliseconds(a.FromRight * 40),
+            };
+            Storyboard.SetTarget(da, a.Digit.Wheel);
+            Storyboard.SetTargetProperty(da, "(UIElement.RenderTransform).(TranslateTransform.Y)");
+            sb.Children.Add(da);
+            a.Digit.CurrentDigit = a.NewDigit;
+        }
+        _amountStoryboard = sb;
+        sb.Begin();
     }
 
     private static string ShortBalanceError(Exception ex)
