@@ -742,8 +742,10 @@ public sealed partial class MainWindow : Window
             RootGrid.Background = _config.Window.Backdrop == "acrylic" ? null : NewBrush("#141823");
             FooterBar.Background = _config.Window.Backdrop == "acrylic" ? null : NewBrush("#141823");
         }
+        _lastTransitionKey = ""; // 主题变化时强制重建“接下来切换”列表，刷新配色
         UpdateTimeline();
         UpdatePrices();
+        UpdateTransitions();
         UpdatePinButton();
     }
 
@@ -1139,7 +1141,7 @@ public sealed partial class MainWindow : Window
                 var remainTb = new TextBlock
                 {
                     FontSize = 10.5,
-                    Foreground = NewBrush("#9AA4B2"),
+                    Foreground = _brushSub,
                     HorizontalAlignment = HorizontalAlignment.Right,
                     VerticalAlignment = VerticalAlignment.Center,
                     Text = FormatRemain(t.Time - phase.Now),
