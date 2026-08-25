@@ -79,6 +79,7 @@ public sealed partial class MainWindow : Window
         InstallWindowSubclass();
         SystemBackdrop = _config.Window.Backdrop == "none" ? null : new PersistentAcrylicBackdrop();
         ApplyThemeMode();
+        StartDpiWatch();
         UpdatePinButton();
         SetMode(_config.Window.Mode, resize: false);
 
@@ -246,8 +247,100 @@ public sealed partial class MainWindow : Window
             {
                 window.ClampMinMaxDuringRestore(lParam);
             }
+            else if (uMsg == WM_DPICHANGED)
+            {
+                // 先让 WinUI 走完自身对 WM_DPICHANGED 的处理（它会把尺寸重置回旧 DPI 换算值），
+                // 再按 Windows 建议矩形修正，避免被覆盖。
+                var dpiResult = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+                window.OnDpiChanged(wParam, lParam);
+                return dpiResult;
+            }
         }
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    /// <summary>
+    /// 跨 DPI 屏幕时按新 DPI 立即修正窗口物理尺寸（保持逻辑 DIP 尺寸不变），
+    /// 避免低→高 DPI 屏幕后窗口不放大而变小；随后由常驻 DPI 监视定时器兜底。
+    /// </summary>
+    private void OnDpiChanged(IntPtr wParam, IntPtr lParam)
+    {
+        try
+        {
+            var newDpi = (uint)(ushort)(wParam.ToInt64() & 0xFFFF);
+            if (newDpi != 0) _lastDpi = newDpi;
+            var queue = DispatcherQueue.GetForCurrentThread();
+            if (queue is null) return;
+            queue.TryEnqueue(() =>
+            {
+                // 跨屏瞬间先快速修正一次，随后由常驻 DPI 监视定时器兜底。
+                ForceWindowSize();
+            });
+        }
+        catch { }
+    }
+
+    private double TargetDipWidth() =>
+        _config.Window.Mode == "compact" ? 250 : Math.Max(280, (int)_config.Window.Width);
+
+    private double TargetDipHeight() =>
+        _config.Window.Mode == "compact" ? 168 : Math.Max(320, (int)_config.Window.Height);
+
+    /// <summary>按当前显示器 DPI 缩放系数，用 Win32 SetWindowPos 强制窗口物理尺寸
+    /// （AppWindow.Resize 在跨屏后与窗口物理尺寸脱节，无法生效）。</summary>
+    private void ForceWindowSize()
+    {
+        try
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            if (hwnd == IntPtr.Zero) return;
+            var scale = GetDpiScale();
+            var w = (int)Math.Round(TargetDipWidth() * scale);
+            var h = (int)Math.Round(TargetDipHeight() * scale);
+            GetWindowRect(hwnd, out var r);
+            SetWindowPos(hwnd, IntPtr.Zero, r.Left, r.Top, w, h, 0x0004 | 0x0010);
+        }
+        catch { }
+    }
+
+    private void StartDpiWatch()
+    {
+        try
+        {
+            var queue = DispatcherQueue.GetForCurrentThread();
+            if (queue is null) return;
+            _dpiWatchTimer = queue.CreateTimer();
+            _dpiWatchTimer.Interval = TimeSpan.FromMilliseconds(500);
+            _dpiWatchTimer.IsRepeating = true;
+            _dpiWatchTimer.Tick += (_, _) => EnforceDpiSize();
+            _dpiWatchTimer.Start();
+        }
+        catch { }
+    }
+
+    private DispatcherQueueTimer? _dpiWatchTimer;
+
+    /// <summary>
+    /// 常驻周期修正：Composition/布局系统会在跨屏后（可能延迟数秒）把窗口物理尺寸覆盖为
+    /// “旧逻辑尺寸 × 新 DPI”的错误值，且不触发 AppWindow.Changed/WM_WINDOWPOSCHANGED；
+    /// 这里每 500ms 检查一次，窗口尺寸与“配置逻辑尺寸 × 当前 DPI”不符就强制纠正。
+    /// </summary>
+    private void EnforceDpiSize()
+    {
+        try
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            if (hwnd == IntPtr.Zero) return;
+            GetWindowRect(hwnd, out var r);
+            var scale = GetDpiScale();
+            var w = (int)Math.Round(TargetDipWidth() * scale);
+            var h = (int)Math.Round(TargetDipHeight() * scale);
+            if (Math.Abs(r.Right - r.Left - w) > 2 || Math.Abs(r.Bottom - r.Top - h) > 2)
+            {
+                SetWindowPos(hwnd, IntPtr.Zero, r.Left, r.Top, w, h, 0x0004 | 0x0010);
+            }
+        }
+        catch { }
     }
 
     /// <summary>窗口首次显示前调用：尝试用 SetWindowPlacement 一次恢复保存的物理矩形。</summary>
@@ -897,6 +990,12 @@ public sealed partial class MainWindow : Window
             {
                 var dpi = GetDpiForWindow(hwnd);
                 if (dpi > 0) return dpi / 96.0;
+                var hMon = MonitorFromWindow(hwnd, 2); // MONITOR_DEFAULTTONEAREST
+                if (hMon != IntPtr.Zero &&
+                    GetDpiForMonitor(hMon, 0, out var dpiX, out _) == 0 && dpiX > 0)
+                {
+                    return dpiX / 96.0;
+                }
             }
         }
         catch { }
@@ -1855,6 +1954,7 @@ public sealed partial class MainWindow : Window
 
     private const uint WM_SHOWWINDOW = 0x0018;
     private const uint WM_GETMINMAXINFO = 0x0024;
+    private const uint WM_DPICHANGED = 0x02E0;
 
     private delegate IntPtr SUBCLASSPROC(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam,
         IntPtr uIdSubclass, IntPtr dwRefData);
@@ -1893,6 +1993,9 @@ public sealed partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern uint GetDpiForSystem();
+
+    [DllImport("shcore.dll")]
+    private static extern int GetDpiForMonitor(IntPtr hMonitor, int dpiType, out uint dpiX, out uint dpiY);
 
     [DllImport("user32.dll")]
     private static extern bool GetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
