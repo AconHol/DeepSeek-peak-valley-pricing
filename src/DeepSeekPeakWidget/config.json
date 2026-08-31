@@ -37,5 +37,11 @@
     "hitPeak": 0.30, "hitValley": 0.15,
     "inputPeak": 9.00, "inputValley": 4.50,
     "outputPeak": 27.00, "outputValley": 13.50
+  },
+  "vision": {
+    "name": "V4 Flash Vision",
+    "hitPeak": 0.10, "hitValley": 0.05,
+    "inputPeak": 3.00, "inputValley": 1.50,
+    "outputPeak": 9.00, "outputValley": 4.50
   }
 }

@@ -95,4 +95,12 @@ public class AppConfig
         InputPeak = 9.00, InputValley = 4.50,
         OutputPeak = 27.00, OutputValley = 13.50,
     };
+    /// <summary>V4 Flash Vision-Exp 多模态模型（定价与 V4 Flash 一致，沿用峰谷计费）。</summary>
+    public ModelPrice Vision { get; set; } = new()
+    {
+        Name = "V4 Flash Vision",
+        HitPeak = 0.10, HitValley = 0.05,
+        InputPeak = 3.00, InputValley = 1.50,
+        OutputPeak = 9.00, OutputValley = 4.50,
+    };
 }

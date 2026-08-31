@@ -1112,7 +1112,7 @@ public sealed partial class MainWindow : Window
         PriceGrid.Children.Clear();
         PriceGrid.RowDefinitions.Clear();
         PriceGrid.ColumnDefinitions.Clear();
-        foreach (var width in new[] { 78.0, 1.0, 1.0, 1.0, 36.0 })
+        foreach (var width in new[] { 104.0, 1.0, 1.0, 1.0, 36.0 })
         {
             PriceGrid.ColumnDefinitions.Add(new ColumnDefinition
             {
@@ -1128,6 +1128,8 @@ public sealed partial class MainWindow : Window
         AddPriceRow(_config.Flash, peak: true);
         AddPriceRow(_config.Pro, peak: false);
         AddPriceRow(_config.Pro, peak: true);
+        AddPriceRow(_config.Vision, peak: false);
+        AddPriceRow(_config.Vision, peak: true);
         UpdatePrices();
     }
 
@@ -1157,7 +1159,7 @@ public sealed partial class MainWindow : Window
         PriceGrid.RowDefinitions.Add(rd);
 
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 2) };
-        foreach (var width in new[] { 78.0, 1.0, 1.0, 1.0, 36.0 })
+        foreach (var width in new[] { 104.0, 1.0, 1.0, 1.0, 36.0 })
         {
             grid.ColumnDefinitions.Add(new ColumnDefinition
             {
@@ -1172,10 +1174,15 @@ public sealed partial class MainWindow : Window
             Text = model.Name,
             FontSize = 11,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            TextWrapping = TextWrapping.Wrap,
             Foreground = _brushText,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 2, 0, 2),
         };
+        if (model.Name == "V4 Flash Vision")
+        {
+            ToolTipService.SetToolTip(name, "DeepSeek-V4-Flash-Vision-Exp（定价与 V4 Flash 一致）");
+        }
         Grid.SetColumn(name, 0);
         grid.Children.Add(name);
 
