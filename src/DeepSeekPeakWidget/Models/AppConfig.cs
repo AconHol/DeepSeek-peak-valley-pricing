@@ -79,14 +79,17 @@ public class AppConfig
     public bool WeekendAllValley { get; set; }
     public NotifyConfig Notify { get; set; } = new();
     public int RefreshMinutes { get; set; } = 30;
+    /// <summary>内置价格方案版本：官方调价后更新此值，旧配置的价格会被自动替换为新价。</summary>
+    public string PriceRevision { get; set; } = "2026-09-10";
     /// <summary>余额自动刷新间隔（秒，0=关闭自动刷新）。</summary>
     public int BalanceRefreshSeconds { get; set; } = 300;
+    /// <summary>V4.1 Flash（模型名 deepseek-flash）：2026-09-10 12:00 起官方降价后的价格。</summary>
     public ModelPrice Flash { get; set; } = new()
     {
-        Name = "V4 Flash",
-        HitPeak = 0.10, HitValley = 0.05,
-        InputPeak = 3.00, InputValley = 1.50,
-        OutputPeak = 9.00, OutputValley = 4.50,
+        Name = "V4.1 Flash",
+        HitPeak = 0.04, HitValley = 0.02,
+        InputPeak = 2.00, InputValley = 1.00,
+        OutputPeak = 8.00, OutputValley = 4.00,
     };
     public ModelPrice Pro { get; set; } = new()
     {
@@ -95,12 +98,12 @@ public class AppConfig
         InputPeak = 9.00, InputValley = 4.50,
         OutputPeak = 27.00, OutputValley = 13.50,
     };
-    /// <summary>V4 Flash Vision-Exp 多模态模型（定价与 V4 Flash 一致，沿用峰谷计费）。</summary>
+    /// <summary>V4 Flash Vision-Exp 多模态模型（flash 系列，定价与 Flash 一致，沿用峰谷计费）。</summary>
     public ModelPrice Vision { get; set; } = new()
     {
         Name = "V4 Flash Vision",
-        HitPeak = 0.10, HitValley = 0.05,
-        InputPeak = 3.00, InputValley = 1.50,
-        OutputPeak = 9.00, OutputValley = 4.50,
+        HitPeak = 0.04, HitValley = 0.02,
+        InputPeak = 2.00, InputValley = 1.00,
+        OutputPeak = 8.00, OutputValley = 4.00,
     };
 }

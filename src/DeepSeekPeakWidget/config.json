@@ -27,10 +27,10 @@
     "onChange": true
   },
   "flash": {
-    "name": "V4 Flash",
-    "hitPeak": 0.10, "hitValley": 0.05,
-    "inputPeak": 3.00, "inputValley": 1.50,
-    "outputPeak": 9.00, "outputValley": 4.50
+    "name": "V4.1 Flash",
+    "hitPeak": 0.04, "hitValley": 0.02,
+    "inputPeak": 2.00, "inputValley": 1.00,
+    "outputPeak": 8.00, "outputValley": 4.00
   },
   "pro": {
     "name": "V4 Pro",
@@ -40,8 +40,8 @@
   },
   "vision": {
     "name": "V4 Flash Vision",
-    "hitPeak": 0.10, "hitValley": 0.05,
-    "inputPeak": 3.00, "inputValley": 1.50,
-    "outputPeak": 9.00, "outputValley": 4.50
+    "hitPeak": 0.04, "hitValley": 0.02,
+    "inputPeak": 2.00, "inputValley": 1.00,
+    "outputPeak": 8.00, "outputValley": 4.00
   }
 }

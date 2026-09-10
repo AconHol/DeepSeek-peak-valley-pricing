@@ -1192,7 +1192,7 @@ public sealed partial class MainWindow : Window
         };
         if (model.Name == "V4 Flash Vision")
         {
-            ToolTipService.SetToolTip(name, "DeepSeek-V4-Flash-Vision-Exp（定价与 V4 Flash 一致）");
+            ToolTipService.SetToolTip(name, "DeepSeek-V4-Flash-Vision-Exp（flash 系列，定价与 V4.1 Flash 一致）");
         }
         Grid.SetColumn(name, 0);
         grid.Children.Add(name);

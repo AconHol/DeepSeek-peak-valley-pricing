@@ -91,6 +91,7 @@ public class ConfigService
                 if (cfg is not null)
                 {
                     NormalizeWeeklyRule(cfg, json);
+                    NormalizePriceRevision(cfg, json);
                     return cfg;
                 }
             }
@@ -131,5 +132,28 @@ public class ConfigService
         }
 
         cfg.WeekValleyDays = new List<bool> { false, false, false, false, false, true, true };
+    }
+
+    /// <summary>内置价格方案版本（官方调价后同步更新）。</summary>
+    private const string CurrentPriceRevision = "2026-09-10";
+
+    /// <summary>
+    /// 官方调价自动迁移：配置文件缺少 priceRevision 或版本落后时，用当前内置价格
+    /// 覆盖 flash/pro/vision 三档单价并写回（覆盖后版本号同步，之后的手工改价不会被再次覆盖）。
+    /// </summary>
+    private void NormalizePriceRevision(AppConfig cfg, string rawJson)
+    {
+        var hasField = rawJson.Contains("\"priceRevision\"", StringComparison.OrdinalIgnoreCase);
+        if (hasField && string.Equals(cfg.PriceRevision, CurrentPriceRevision, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var defaults = new AppConfig();
+        cfg.Flash = defaults.Flash;
+        cfg.Pro = defaults.Pro;
+        cfg.Vision = defaults.Vision;
+        cfg.PriceRevision = CurrentPriceRevision;
+        try { Save(cfg); } catch { }
     }
 }
