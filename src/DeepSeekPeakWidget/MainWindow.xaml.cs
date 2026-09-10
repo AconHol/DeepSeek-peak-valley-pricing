@@ -82,6 +82,7 @@ public sealed partial class MainWindow : Window
         StartDpiWatch();
         UpdatePinButton();
         SetMode(_config.Window.Mode, resize: false);
+        ScheduleCloakCheck(); // 自愈：窗口创建后即定时检查，不依赖 Activated 事件
 
         AppWindow.Changed += (_, e) =>
         {
@@ -127,7 +128,6 @@ public sealed partial class MainWindow : Window
                     ApplySavedPlacementCorrection();
                 };
                 cal.Start();
-                ScheduleCloakCheck();
                 try
                 {
                     var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
@@ -423,45 +423,54 @@ public sealed partial class MainWindow : Window
         catch { }
     }
 
-    private int _cloakCheckIndex;
-    private static readonly int[] _cloakCheckDelays = { 5, 15, 30 };
-
     private static string CloakRelaunchFlagPath => System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "DeepSeekPeakWidget", "cloak-relaunch-flag");
 
+    /// <summary>上次因被遮盖而自愈重启的时间（UTC），用于冷却，避免连续自愈死循环。</summary>
+    private DateTime _lastRelaunchUtc = DateTime.MinValue;
+
     /// <summary>
     /// 开机自启时若窗口被 DWM 遮盖（进程在、桌面看不到），定时检查并自愈重启。
-    /// 多次检查均正常则删除标记；本次开机已因遮盖重启过则不再重复，避免循环。
+    /// 每 5 秒持续检查一次；被遮盖时若距上次自愈超过 30 秒则以包内 exe 重启（写入
+    /// 时间戳供下个实例冷却判断），避免连续自愈死循环，DWM 就绪后窗口恢复正常；
+    /// 窗口首次显示（_showHandled）前不自愈，避免 Activate 前误判。
     /// </summary>
     private void ScheduleCloakCheck()
     {
         try
         {
-            if (System.IO.File.Exists(CloakRelaunchFlagPath)) return;
-            _cloakCheckIndex = 0;
+            // 读取上次自愈时间戳（文件内容为 ISO 8601 UTC）
+            try
+            {
+                var flagText = System.IO.File.ReadAllText(CloakRelaunchFlagPath).Trim();
+                if (DateTime.TryParse(flagText, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out var t))
+                {
+                    _lastRelaunchUtc = t.Kind == DateTimeKind.Utc ? t : t.ToUniversalTime();
+                }
+            }
+            catch { }
             var timer = DispatcherQueue.GetForCurrentThread().CreateTimer();
-            timer.IsRepeating = false;
+            timer.Interval = TimeSpan.FromSeconds(5);
+            timer.IsRepeating = true;
             timer.Tick += (_, _) =>
             {
-                timer.Stop();
+                if (!_showHandled) return; // 窗口尚未首次显示，等 Activate 后再判断
                 if (IsWindowCloaked())
                 {
-                    RelaunchSelf();
-                    return;
+                    if ((DateTime.UtcNow - _lastRelaunchUtc) > TimeSpan.FromSeconds(30))
+                    {
+                        timer.Stop();
+                        RelaunchSelf();
+                    }
                 }
-                _cloakCheckIndex++;
-                if (_cloakCheckIndex < _cloakCheckDelays.Length)
+                else if ((DateTime.UtcNow - _lastRelaunchUtc) > TimeSpan.FromSeconds(30))
                 {
-                    timer.Interval = TimeSpan.FromSeconds(_cloakCheckDelays[_cloakCheckIndex]);
-                    timer.Start();
-                }
-                else
-                {
+                    // 已恢复正常：清除时间戳，下次再被遮盖可立即自愈
                     try { System.IO.File.Delete(CloakRelaunchFlagPath); } catch { }
                 }
             };
-            timer.Interval = TimeSpan.FromSeconds(_cloakCheckDelays[0]);
             timer.Start();
         }
         catch { }
@@ -479,18 +488,20 @@ public sealed partial class MainWindow : Window
         catch { return false; }
     }
 
-    /// <summary>保存配置后以 explorer 重新启动打包应用，再关闭当前实例。</summary>
+    /// <summary>保存配置后直接以包内 exe 重启，再关闭当前实例。</summary>
     private void RelaunchSelf()
     {
         try
         {
             _configService.Save(_config);
-            try { System.IO.File.WriteAllText(CloakRelaunchFlagPath, DateTime.Now.ToString("O")); } catch { }
-            var aumid = $"{Windows.ApplicationModel.Package.Current.Id.FamilyName}!App";
+            try { System.IO.File.WriteAllText(CloakRelaunchFlagPath, DateTime.UtcNow.ToString("O")); } catch { }
+            // 直接用包内 exe 重启（explorer shell:AppsFolder 启动会再次被 cloaked）
+            var exePath = System.IO.Path.Combine(
+                Windows.ApplicationModel.Package.Current.InstalledLocation.Path,
+                "DeepSeekPeakWidget.exe");
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "explorer.exe",
-                Arguments = $"shell:AppsFolder\\{aumid}",
+                FileName = exePath,
                 UseShellExecute = true,
             };
             System.Diagnostics.Process.Start(psi);

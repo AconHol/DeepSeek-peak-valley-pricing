@@ -12,8 +12,11 @@ $manifest = Join-Path $ProjectRoot 'src\DeepSeekPeakWidget\AppxManifest.xml'
 $xml = [xml](Get-Content -Raw -LiteralPath $manifest)
 $ver = $xml.Package.Identity.Version
 
-# 构建目录
-$build = Join-Path $ProjectRoot 'installer\_build'
+# 构建目录：必须使用纯英文路径。
+# iexpress 解析 SED 时按当前系统 ANSI 代码页处理，SED 中含非 ASCII 字符
+# （如中文项目路径）会导致打包静默失败（退出码 1），故源目录与打包输出
+# 都放在英文临时目录，最后再复制到 release 下的目标文件名。
+$build = Join-Path ([System.IO.Path]::GetTempPath()) 'DeepSeekPeakWidgetInstaller'
 if (Test-Path -LiteralPath $build) { Remove-Item -LiteralPath $build -Recurse -Force }
 New-Item -ItemType Directory -Path $build | Out-Null
 
@@ -38,6 +41,7 @@ Copy-Item -LiteralPath (Join-Path $ProjectRoot 'installer\run-install.cmd') -Des
 
 # 输出文件
 $targetName = Join-Path $ReleaseDir ($OutName + '.exe')
+$packedExe = Join-Path $build 'installer-out.exe'
 $sedPath = Join-Path $build 'installer.sed'
 
 # 生成 iexpress SED（最小化配置，避免可选键导致打包失败；路径含中文需 ANSI 编码）
@@ -52,7 +56,7 @@ HideExtractAnimationHandler=1
 UseCustomAnimationHandler=0
 CompressionType=MSZIP
 LongFileNames=1
-TargetName=$targetName
+TargetName=$packedExe
 FriendlyName=DeepSeek Peak Valley Pricing Widget v$ver Installer
 AppLaunched=cmd.exe /c run-install.cmd
 SourceFiles=SourceFiles
@@ -69,7 +73,10 @@ pve-widget-cert.cer=
 # 运行 iexpress 打包
 $p = Start-Process -FilePath 'C:\Windows\System32\iexpress.exe' -ArgumentList @('/N', '/Q', $sedPath) -Wait -PassThru
 if ($p.ExitCode -ne 0) { throw "iexpress 打包失败，退出码：$($p.ExitCode)" }
-if (-not (Test-Path -LiteralPath $targetName)) { throw "未生成安装器：$targetName" }
+if (-not (Test-Path -LiteralPath $packedExe)) { throw "未生成安装器：$packedExe" }
+
+# 复制到 release 目标文件名（中文名，避开 iexpress 的路径编码限制）
+Copy-Item -LiteralPath $packedExe -Destination $targetName -Force
 
 Remove-Item -LiteralPath $build -Recurse -Force
 Write-Host "安装器已生成：$targetName"
