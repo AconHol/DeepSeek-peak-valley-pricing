@@ -201,6 +201,7 @@ public sealed partial class MainWindow : Window
         BuildPrices();
         UpdateDisplay();
         _ = RefreshBalanceAsync();
+        _ = TrySyncHolidaysAsync(force: false);
     }
 
     // ---------- 窗口位置持久化（参照 WinUIEx WindowManager 方案） ----------
@@ -943,6 +944,45 @@ public sealed partial class MainWindow : Window
         catch { }
     }
 
+    /// <summary>联网同步法定节假日（后台执行；失败时保留本地清单，不影响使用）。</summary>
+    private async Task TrySyncHolidaysAsync(bool force)
+    {
+        try
+        {
+            if (!force && !_config.HolidayAutoUpdate) return;
+
+            if (!force && _config.HolidayLastSync is { Length: > 0 } lastText &&
+                DateTime.TryParse(lastText, out var last) &&
+                (DateTime.Now - last).TotalDays < 7)
+            {
+                return;
+            }
+
+            var year = _schedule.ScheduleNow.Year;
+            var result = await HolidayService.FetchAsync(new[] { year, year + 1 });
+            if (!result.Success)
+            {
+                return;
+            }
+
+            var changed = HolidayService.MergeInto(_config, result);
+            _configService.Save(_config);
+            if (!changed)
+            {
+                return;
+            }
+
+            _schedule = new PeakSchedule(_config);
+            BuildTimeline();
+            UpdateDisplay();
+            FooterText.Text = $"节假日已自动更新：{result.TotalCount} 天（{result.Source}）";
+        }
+        catch
+        {
+            // 联网失败（无网络/接口不可用）时继续使用本地清单
+        }
+    }
+
     private void SetMode(string mode, bool resize = true)
     {
         _config.Window.Mode = mode;
@@ -1085,6 +1125,15 @@ public sealed partial class MainWindow : Window
             }
         }
         ScheduleHint.Text = sb.ToString();
+        try
+        {
+            var holidayCount = _config.Holidays?.Count ?? 0;
+            ToolTipService.SetToolTip(ScheduleHint,
+                string.IsNullOrWhiteSpace(_config.HolidayLastSync)
+                    ? $"节假日数据：内置清单（{holidayCount} 天），可在设置中联网更新"
+                    : $"节假日数据：{_config.HolidayLastSync} 更新（{_config.HolidaySource}），共 {holidayCount} 天");
+        }
+        catch { }
     }
 
     private void UpdateTimeline()
@@ -1864,7 +1913,77 @@ public sealed partial class MainWindow : Window
         Close();
     }
 
-    private async void MenuAutoStart_Click(object sender, RoutedEventArgs e)
+    // ---------- 开机自启（安装版用 StartupTask，绿色版用注册表 Run 项） ----------
+
+    private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    private const string RunValueName = "DeepSeekPeakWidget";
+
+    private static bool IsPackagedApp()
+    {
+        try
+        {
+            _ = Windows.ApplicationModel.Package.Current;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsPortableAutoStartEnabled()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKeyPath);
+            return key?.GetValue(RunValueName) is string value && value.Length > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void SetPortableAutoStart(bool enabled)
+    {
+        using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RunKeyPath, true);
+        if (key is null)
+        {
+            throw new InvalidOperationException("无法打开开机自启注册表项");
+        }
+        if (enabled)
+        {
+            var exe = Environment.ProcessPath ?? "";
+            key.SetValue(RunValueName, $"\"{exe}\"", Microsoft.Win32.RegistryValueKind.String);
+        }
+        else
+        {
+            key.DeleteValue(RunValueName, throwOnMissingValue: false);
+        }
+    }
+
+    private void MenuAutoStart_Click(object sender, RoutedEventArgs e)
+    {
+        if (!IsPackagedApp())
+        {
+            try
+            {
+                var wasEnabled = IsPortableAutoStartEnabled();
+                SetPortableAutoStart(!wasEnabled);
+                AutoStartMenuItem.Text = wasEnabled ? "开机自启：已关闭" : "开机自启：已开启";
+                FooterText.Text = wasEnabled ? "已关闭开机自启（绿色版）" : "已开启开机自启（绿色版）";
+            }
+            catch (Exception ex)
+            {
+                FooterText.Text = $"开机自启设置失败: {ex.Message}";
+            }
+            return;
+        }
+
+        _ = TogglePackagedAutoStartAsync();
+    }
+
+    private async Task TogglePackagedAutoStartAsync()
     {
         try
         {
@@ -1899,6 +2018,12 @@ public sealed partial class MainWindow : Window
 
     private async void MainMenu_Opening(object? sender, object e)
     {
+        if (!IsPackagedApp())
+        {
+            AutoStartMenuItem.Text = IsPortableAutoStartEnabled() ? "开机自启：已开启" : "开机自启：已关闭";
+            return;
+        }
+
         try
         {
             var t = await Windows.ApplicationModel.StartupTask.GetAsync("DeepSeekPeakStartup");

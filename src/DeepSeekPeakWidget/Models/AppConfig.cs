@@ -103,6 +103,12 @@ public class AppConfig
         "2027-09-15",
         "2027-10-01", "2027-10-02", "2027-10-03",
     };
+    /// <summary>是否在启动/定时刷新时联网自动更新法定节假日（关闭后只用本地清单）。</summary>
+    public bool HolidayAutoUpdate { get; set; } = true;
+    /// <summary>上次成功联网更新节假日的时间（本地时间，ISO 字符串）。</summary>
+    public string? HolidayLastSync { get; set; }
+    /// <summary>上次成功联网更新所用的数据源名称（便于排查）。</summary>
+    public string? HolidaySource { get; set; }
     public NotifyConfig Notify { get; set; } = new();
     public int RefreshMinutes { get; set; } = 30;
     /// <summary>内置价格方案版本：官方调价后更新此值，旧配置的价格会被自动替换为新价。</summary>

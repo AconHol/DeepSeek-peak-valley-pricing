@@ -67,6 +67,8 @@ public sealed partial class SettingsWindow : Window
         AdvanceBox.Text = _config.Notify.AdvanceMinutes.ToString();
         ChangeChk.IsChecked = _config.Notify.OnChange;
         HolidaysBox.Text = string.Join(Environment.NewLine, _config.Holidays ?? new List<string>());
+        HolidayAutoChk.IsChecked = _config.HolidayAutoUpdate;
+        UpdateHolidayStatusText();
 
         OpacitySlider.ValueChanged += (_, _) =>
         {
@@ -74,6 +76,63 @@ public sealed partial class SettingsWindow : Window
         };
         BackdropCombo.SelectionChanged += (_, _) => UpdateOpacityEnabled();
         UpdateOpacityEnabled();
+    }
+
+    /// <summary>显示上次联网更新时间与来源；没有记录时提示使用内置清单。</summary>
+    private void UpdateHolidayStatusText()
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(_config.HolidayLastSync))
+            {
+                HolidaySyncText.Text = $"上次更新：{_config.HolidayLastSync}" +
+                                       (string.IsNullOrWhiteSpace(_config.HolidaySource)
+                                           ? ""
+                                           : $" · 来源 {_config.HolidaySource}");
+            }
+            else
+            {
+                HolidaySyncText.Text = "尚未联网更新（当前使用内置清单）";
+            }
+        }
+        catch { }
+    }
+
+    private async void HolidaySyncBtn_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            HolidaySyncBtn.IsEnabled = false;
+            HolidaySyncText.Text = "正在联网更新…";
+            var year = DateTime.Now.Year;
+            var result = await Services.HolidayService.FetchAsync(new[] { year, year + 1 });
+            if (!result.Success)
+            {
+                HolidaySyncText.Text = "更新失败（可稍后再试，或手动编辑清单）：" +
+                                       (result.Error ?? "未知错误");
+                return;
+            }
+
+            var changed = Services.HolidayService.MergeInto(_config, result);
+            if (changed)
+            {
+                HolidaysBox.Text = string.Join(Environment.NewLine, _config.Holidays ?? new List<string>());
+            }
+            _configService.Save(_config);
+            HolidaySyncText.Text = "已更新：" + Services.HolidayService.Describe(result);
+            if (changed)
+            {
+                _onSave(_config);
+            }
+        }
+        catch (Exception ex)
+        {
+            HolidaySyncText.Text = "更新失败：" + ex.Message;
+        }
+        finally
+        {
+            HolidaySyncBtn.IsEnabled = true;
+        }
     }
 
     private static void SelectComboByTag(ComboBox combo, string? tag)
@@ -162,6 +221,7 @@ public sealed partial class SettingsWindow : Window
             }
             holidays.Sort(StringComparer.Ordinal);
             _config.Holidays = holidays;
+            _config.HolidayAutoUpdate = HolidayAutoChk.IsChecked == true;
 
             _configService.Save(_config);
             _onSave(_config);

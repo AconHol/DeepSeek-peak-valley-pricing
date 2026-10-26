@@ -19,12 +19,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- 绿色版（免安装）：dotnet publish -p:WindowsPackageType=None 时关闭 MSIX 打包链路 -->
+  <PropertyGroup Condition="'$(WindowsPackageType)' == 'None'">
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <AppxPackage>false</AppxPackage>
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.*" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.*" />
   </ItemGroup>
   <ItemGroup>
-    <AppxManifest Include="AppxManifest.xml" />
+    <AppxManifest Include="AppxManifest.xml" Condition="'$(WindowsPackageType)' != 'None'" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="config.json" CopyToOutputDirectory="PreserveNewest" />

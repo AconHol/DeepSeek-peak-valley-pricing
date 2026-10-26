@@ -169,11 +169,22 @@
                 </StackPanel>
                 <Button x:Name="WeekendDefaultBtn" Content="恢复官方默认（仅周六/周日全天谷）" FontSize="11" HorizontalAlignment="Left" Padding="12,5" Margin="0,4,0,0" Click="WeekendDefaultBtn_Click"/>
                 <TextBlock Text="法定节假日（全天谷时）" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="0,10,0,0"/>
-                <TextBlock Text="官方规则：周一至周五（不含法定节假日）09:00-12:00、14:00-18:00 为高峰；周末与法定节假日全天按谷时。每行一个日期（yyyy-MM-dd）。内置 2026 年安排与 2027 年法定节日核心日；2027 年完整放假/调休安排待国务院公布后可在此补充。"
+                <TextBlock Text="官方规则：周一至周五（不含法定节假日）09:00-12:00、14:00-18:00 为高峰；周末与法定节假日全天按谷时。每行一个日期（yyyy-MM-dd）。内置 2026 年安排与 2027 年法定节日核心日；开启自动更新后，每年官方公布安排时会自动同步。"
                            FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,4"/>
                 <TextBox x:Name="HolidaysBox" AcceptsReturn="True" Height="96" FontSize="11"
                          TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto"
                          PlaceholderText="每行一个日期，例如 2027-01-01"/>
+                <CheckBox x:Name="HolidayAutoChk" Content="自动联网更新法定节假日（推荐，每年官方公布后自动同步）" FontSize="12" Margin="0,4,0,0"/>
+                <Grid Margin="0,2,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="HolidaySyncBtn" Content="立即更新" FontSize="11" Padding="12,5" Click="HolidaySyncBtn_Click"/>
+                    <TextBlock x:Name="HolidaySyncText" Grid.Column="1" FontSize="11" Margin="10,0,0,0"
+                               VerticalAlignment="Center" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </Grid>
                 <Button x:Name="HolidayDefaultBtn" Content="恢复内置节假日清单" FontSize="11" HorizontalAlignment="Left" Padding="12,5" Margin="0,4,0,0" Click="HolidayDefaultBtn_Click"/>
                 <Grid Margin="0,4,0,0">
                     <Grid.ColumnDefinitions>
