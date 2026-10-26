@@ -134,26 +134,40 @@ public class ConfigService
         cfg.WeekValleyDays = new List<bool> { false, false, false, false, false, true, true };
     }
 
-    /// <summary>内置价格方案版本（官方调价后同步更新）。</summary>
-    private const string CurrentPriceRevision = "2026-09-10";
+    /// <summary>内置价格方案版本（官方调价/规则变化后同步更新）。</summary>
+    public const string CurrentPriceRevision = "2026-10-26";
 
     /// <summary>
-    /// 官方调价自动迁移：配置文件缺少 priceRevision 或版本落后时，用当前内置价格
-    /// 覆盖 flash/pro/vision 三档单价并写回（覆盖后版本号同步，之后的手工改价不会被再次覆盖）。
+    /// 内置维护：官方调价自动迁移 + 缺失字段补齐。
+    /// 1) 配置文件缺少 priceRevision 或版本落后时，用当前内置价格覆盖 flash/pro 单价并写回
+    ///    （覆盖后版本号同步，之后的手工改价不会被再次覆盖）；
+    /// 2) 旧配置缺少 holidays 字段时补齐内置法定节假日清单；字段存在（哪怕为空数组）则尊重用户设置。
     /// </summary>
     private void NormalizePriceRevision(AppConfig cfg, string rawJson)
     {
+        var defaults = new AppConfig();
+        var dirty = false;
+
+        if (!rawJson.Contains("\"holidays\"", StringComparison.OrdinalIgnoreCase))
+        {
+            cfg.Holidays = defaults.Holidays;
+            dirty = true;
+        }
+
         var hasField = rawJson.Contains("\"priceRevision\"", StringComparison.OrdinalIgnoreCase);
-        if (hasField && string.Equals(cfg.PriceRevision, CurrentPriceRevision, StringComparison.Ordinal))
+        if (!hasField || !string.Equals(cfg.PriceRevision, CurrentPriceRevision, StringComparison.Ordinal))
+        {
+            cfg.Flash = defaults.Flash;
+            cfg.Pro = defaults.Pro;
+            cfg.PriceRevision = CurrentPriceRevision;
+            dirty = true;
+        }
+
+        if (!dirty)
         {
             return;
         }
 
-        var defaults = new AppConfig();
-        cfg.Flash = defaults.Flash;
-        cfg.Pro = defaults.Pro;
-        cfg.Vision = defaults.Vision;
-        cfg.PriceRevision = CurrentPriceRevision;
         try { Save(cfg); } catch { }
     }
 }

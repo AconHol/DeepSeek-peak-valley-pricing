@@ -66,6 +66,7 @@ public sealed partial class SettingsWindow : Window
         NotifyChk.IsChecked = _config.Notify.Enabled;
         AdvanceBox.Text = _config.Notify.AdvanceMinutes.ToString();
         ChangeChk.IsChecked = _config.Notify.OnChange;
+        HolidaysBox.Text = string.Join(Environment.NewLine, _config.Holidays ?? new List<string>());
 
         OpacitySlider.ValueChanged += (_, _) =>
         {
@@ -145,6 +146,23 @@ public sealed partial class SettingsWindow : Window
                 int.TryParse(AdvanceBox.Text, out var adv) ? adv : 10);
             _config.Notify.OnChange = ChangeChk.IsChecked == true;
 
+            // 法定节假日：每行一个 yyyy-MM-dd，去重并按日期排序
+            var holidays = new List<string>();
+            foreach (var raw in (HolidaysBox.Text ?? "").Split(new[] { '\r', '\n', ',', '，', ';', '；' },
+                         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (!DateTime.TryParseExact(raw, "yyyy-MM-dd", null,
+                        System.Globalization.DateTimeStyles.None, out var hd))
+                {
+                    ShowInvalid();
+                    return;
+                }
+                var normalized = hd.ToString("yyyy-MM-dd");
+                if (!holidays.Contains(normalized)) holidays.Add(normalized);
+            }
+            holidays.Sort(StringComparer.Ordinal);
+            _config.Holidays = holidays;
+
             _configService.Save(_config);
             _onSave(_config);
             Close();
@@ -173,6 +191,11 @@ public sealed partial class SettingsWindow : Window
         {
             if (RootGrid.FindName($"WeekChk{i}") is CheckBox cb) cb.IsChecked = true;
         }
+    }
+
+    private void HolidayDefaultBtn_Click(object sender, RoutedEventArgs e)
+    {
+        HolidaysBox.Text = string.Join(Environment.NewLine, new AppConfig().Holidays);
     }
 
     private void ShowInvalid()

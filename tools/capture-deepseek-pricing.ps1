@@ -68,31 +68,68 @@ function Get-PageContent {
     return [pscustomobject]@{ Html = $html; Text = $text }
 }
 
-function Get-Models([string]$text) {
-    $m = [regex]::Match($text, '模型\s+(deepseek[\w\.\-]+)\s+(deepseek[\w\.\-]+)\s+(deepseek[\w\.\-]+)')
-    if (-not $m.Success) { return @() }
-    return @($m.Groups[1].Value, $m.Groups[2].Value, $m.Groups[3].Value)
+function Get-Segment([string]$text, [string]$from, [string]$to) {
+    $i = $text.IndexOf($from)
+    if ($i -lt 0) { return '' }
+    $j = $text.IndexOf($to, $i + $from.Length)
+    if ($j -lt 0) { $j = [Math]::Min($text.Length, $i + 500) }
+    return $text.Substring($i, $j - $i)
 }
 
-function Get-PriceTriple([string]$text, [string]$label) {
-    # 形如：<label> 空闲时段 0.05元 0.15元 0.05元 高峰时段 0.10元 0.30元 0.10元
+function Get-Models([string]$text) {
+    # 表头形如：模型 deepseek-flash (1) deepseek-v4-pro BASE URL ...
+    # 模型数量随官方表格变化（2026-10 为 flash / v4-pro 两列），这里按出现顺序全量提取。
+    $seg = Get-Segment $text '模型 ' 'BASE URL'
+    $names = @([regex]::Matches($seg, 'deepseek[\w\.\-]+') | ForEach-Object { $_.Value })
+    return $names
+}
+
+function Get-ModelVersions([string]$text) {
+    # 形如：模型版本 DeepSeek-V4.1-Flash-1017 DeepSeek-V4-Pro-0813
+    $seg = Get-Segment $text '模型版本' '思考模式'
+    $versions = @([regex]::Matches($seg, 'DeepSeek[\w\.\-]+') | ForEach-Object { $_.Value })
+    return $versions
+}
+
+function Get-PriceRow([string]$text, [string]$label) {
+    # 形如：<label> 空闲时段 0.02元 0.15元 高峰时段 0.04元 0.30元
+    # 每档报价的数量=模型数量（2 个或 3 个），因此按“数字+元”的连续片段整体提取。
     $pattern = [regex]::Escape($label) +
-               '\s*空闲时段\s*([\d.]+)\s*元\s*([\d.]+)\s*元\s*([\d.]+)\s*元' +
-               '\s*高峰时段\s*([\d.]+)\s*元\s*([\d.]+)\s*元\s*([\d.]+)\s*元'
+               '\s*空闲时段\s*((?:[\d.]+\s*元\s*)+)' +
+               '\s*高峰时段\s*((?:[\d.]+\s*元\s*)+)'
     $m = [regex]::Match($text, $pattern)
     if (-not $m.Success) { return $null }
-    return [pscustomobject]@{
-        Valley = @([double]$m.Groups[1].Value, [double]$m.Groups[2].Value, [double]$m.Groups[3].Value)
-        Peak   = @([double]$m.Groups[4].Value, [double]$m.Groups[5].Value, [double]$m.Groups[6].Value)
-    }
+    $valley = @([regex]::Matches($m.Groups[1].Value, '[\d.]+') | ForEach-Object { [double]$_.Value })
+    $peak = @([regex]::Matches($m.Groups[2].Value, '[\d.]+') | ForEach-Object { [double]$_.Value })
+    if ($valley.Count -eq 0 -or $valley.Count -ne $peak.Count) { return $null }
+    return [pscustomobject]@{ Valley = $valley; Peak = $peak }
 }
 
-function Format-PriceKey($prices) {
+function Format-PriceKey($models, $prices) {
     if (-not $prices -or -not $prices.Hit -or -not $prices.Miss -or -not $prices.Out) { return '<解析失败>' }
-    return ('{0}/{1} {2}/{3} {4}/{5}' -f `
-        $prices.Hit.Valley[0], $prices.Hit.Peak[0], `
-        $prices.Miss.Valley[0], $prices.Miss.Peak[0], `
-        $prices.Out.Valley[0], $prices.Out.Peak[0])
+    $n = $prices.Hit.Valley.Count
+    $items = @()
+    for ($i = 0; $i -lt $n; $i++) {
+        $name = if ($i -lt $models.Count) { $models[$i] } else { "模型$($i + 1)" }
+        $items += ('{0} 谷 {1}/{2}/{3} 峰 {4}/{5}/{6}' -f `
+            $name, `
+            $prices.Hit.Valley[$i], $prices.Miss.Valley[$i], $prices.Out.Valley[$i], `
+            $prices.Hit.Peak[$i], $prices.Miss.Peak[$i], $prices.Out.Peak[$i])
+    }
+    return ($items -join '；')
+}
+
+function Test-ModelMatch($prices, [int]$index, $baseline) {
+    if (-not $baseline -or -not $prices -or $prices.Hit.Valley.Count -le $index) { return $null }
+    if ($null -eq $baseline.hitValley) { return $null }
+    return (
+        [double]$baseline.hitValley -eq $prices.Hit.Valley[$index] -and
+        [double]$baseline.hitPeak -eq $prices.Hit.Peak[$index] -and
+        [double]$baseline.inputValley -eq $prices.Miss.Valley[$index] -and
+        [double]$baseline.inputPeak -eq $prices.Miss.Peak[$index] -and
+        [double]$baseline.outputValley -eq $prices.Out.Valley[$index] -and
+        [double]$baseline.outputPeak -eq $prices.Out.Peak[$index]
+    )
 }
 
 # ---- 等待到指定时刻 ----
@@ -112,14 +149,21 @@ if ($Deadline) {
     Write-Log ('截止时间：{0:HH:mm}' -f $deadlineTime)
 }
 
-$baseline = $null
+$baselineFlash = $null
+$baselinePro = $null
 if ($BaselineFile -and (Test-Path -LiteralPath $BaselineFile)) {
     try {
         $cfg = Get-Content -Raw -LiteralPath $BaselineFile | ConvertFrom-Json
-        $baseline = $cfg.flash
+        $baselineFlash = $cfg.flash
+        $baselinePro = $cfg.pro
         Write-Log ('程序当前 flash 价格（基线）：谷 {0}/{1}/{2}，峰 {3}/{4}/{5}' -f `
-            $baseline.hitValley, $baseline.inputValley, $baseline.outputValley, `
-            $baseline.hitPeak, $baseline.inputPeak, $baseline.outputPeak)
+            $baselineFlash.hitValley, $baselineFlash.inputValley, $baselineFlash.outputValley, `
+            $baselineFlash.hitPeak, $baselineFlash.inputPeak, $baselineFlash.outputPeak)
+        if ($baselinePro) {
+            Write-Log ('程序当前 pro 价格（基线）：谷 {0}/{1}/{2}，峰 {3}/{4}/{5}' -f `
+                $baselinePro.hitValley, $baselinePro.inputValley, $baselinePro.outputValley, `
+                $baselinePro.hitPeak, $baselinePro.inputPeak, $baselinePro.outputPeak)
+        }
     } catch { Write-Log ('读取基线失败：{0}' -f $_.Exception.Message) }
 }
 
@@ -140,36 +184,42 @@ while ($true) {
 
     if ($page) {
         $prices = [pscustomobject]@{
-            Hit  = Get-PriceTriple $page.Text '（缓存命中）'
-            Miss = Get-PriceTriple $page.Text '（缓存未命中）'
-            Out  = Get-PriceTriple $page.Text '百万tokens输出'
+            Hit  = Get-PriceRow $page.Text '（缓存命中）'
+            Miss = Get-PriceRow $page.Text '（缓存未命中）'
+            Out  = Get-PriceRow $page.Text '百万tokens输出'
         }
-        $models = Get-Models $page.Text
-        $key = Format-PriceKey $prices
+        $models = @(Get-Models $page.Text)
+        $versions = @(Get-ModelVersions $page.Text)
+        $key = Format-PriceKey $models $prices
         Write-Log ('解析状态：模型 {0} 个；命中输入 {1}；未命中输入 {2}；输出 {3}；页面文本 {4} 字符' -f `
             $models.Count, ($null -ne $prices.Hit), ($null -ne $prices.Miss), ($null -ne $prices.Out), $page.Text.Length)
 
+        # 官方表格的列顺序可能变化，按模型名定位 flash / pro 在列中的下标
+        $flashIndex = 0
+        $proIndex = -1
+        for ($i = 0; $i -lt $models.Count; $i++) {
+            if ($models[$i] -match 'pro') { $proIndex = $i }
+        }
+        if ($proIndex -eq 0) { $flashIndex = 1 }
+
         $targetMatch = $null
-        if ($baseline -and $prices.Hit) {
-            $targetMatch = (
-                [double]$baseline.hitValley -eq $prices.Hit.Valley[0] -and
-                [double]$baseline.hitPeak -eq $prices.Hit.Peak[0] -and
-                [double]$baseline.inputValley -eq $prices.Miss.Valley[0] -and
-                [double]$baseline.inputPeak -eq $prices.Miss.Peak[0] -and
-                [double]$baseline.outputValley -eq $prices.Out.Valley[0] -and
-                [double]$baseline.outputPeak -eq $prices.Out.Peak[0]
-            )
+        $proMatch = $null
+        if ($prices.Hit -and $prices.Miss -and $prices.Out) {
+            $targetMatch = Test-ModelMatch $prices $flashIndex $baselineFlash
+            if ($proIndex -ge 0) { $proMatch = Test-ModelMatch $prices $proIndex $baselinePro }
         }
 
         $result = [pscustomobject]@{
             capturedAt  = (Get-Date).ToString('s')
             sourceUrl   = $url
             models      = $models
+            modelVersions = $versions
             hitInput    = $prices.Hit
             missInput   = $prices.Miss
             output      = $prices.Out
             summary     = $key
             matchesProgramPrice = $targetMatch
+            matchesProPrice = $proMatch
             textLength  = $page.Text.Length
         }
 
@@ -189,8 +239,10 @@ while ($true) {
             }
         } else {
             Write-Log ('模型：{0}' -f ($models -join ', '))
-            Write-Log ('首列价格（谷/峰）：{0}' -f $key)
-            if ($null -ne $targetMatch) { Write-Log ('是否与程序当前价格一致：{0}' -f $targetMatch) }
+            if ($versions.Count -gt 0) { Write-Log ('模型版本：{0}' -f ($versions -join ', ')) }
+            Write-Log ('价格（谷价/峰价）：{0}' -f $key)
+            if ($null -ne $targetMatch) { Write-Log ('flash 是否与程序当前价格一致：{0}' -f $targetMatch) }
+            if ($null -ne $proMatch) { Write-Log ('pro 是否与程序当前价格一致：{0}' -f $proMatch) }
 
             if ($null -eq $prevKey) {
                 $prevKey = $key
@@ -206,6 +258,9 @@ while ($true) {
                 Write-Log '价格未变化，继续等待…'
             }
         }
+
+        # 单次抓取（-NoWait）无论解析成功与否都只跑一轮，避免无截止时间时无限轮询
+        if ($NoWait) { break }
     }
 
     if ($deadlineTime -and (Get-Date) -gt $deadlineTime) {

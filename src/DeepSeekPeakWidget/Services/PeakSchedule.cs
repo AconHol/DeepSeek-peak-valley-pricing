@@ -11,23 +11,44 @@ public class ScheduleInfo
     public DateTime? NextTime { get; set; }
     public bool NextIsPeak { get; set; }
     public bool AllDayValley { get; set; }
+    /// <summary>今天是否为法定节假日（官方规则：节假日全天按空闲时段计费）。</summary>
+    public bool TodayIsHoliday { get; set; }
 }
 
 /// <summary>DeepSeek 峰谷时段计算引擎。</summary>
 public class PeakSchedule
 {
     private readonly AppConfig _cfg;
+    /// <summary>法定节假日集合（yyyy-MM-dd），启动/重载配置时一次性解析。</summary>
+    private readonly HashSet<string> _holidays = new(StringComparer.Ordinal);
 
     public PeakSchedule(AppConfig cfg)
     {
         _cfg = cfg;
+        if (cfg.Holidays is not null)
+        {
+            foreach (var raw in cfg.Holidays)
+            {
+                if (DateTime.TryParseExact((raw ?? "").Trim(), "yyyy-MM-dd",
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.None, out var d))
+                {
+                    _holidays.Add(d.ToString("yyyy-MM-dd"));
+                }
+            }
+        }
     }
 
     /// <summary>按配置时区偏移后的“时段时间”。</summary>
     public DateTime ScheduleNow => DateTime.UtcNow.AddHours(_cfg.TimezoneOffsetHours);
 
+    /// <summary>指定日期是否为法定节假日。</summary>
+    public bool IsHoliday(DateTime d) => _holidays.Contains(d.ToString("yyyy-MM-dd"));
+
     private bool DayAllValley(DateTime d)
     {
+        // 官方规则（2026-08-23 起）：周末与法定节假日全天按空闲时段计费，节假日优先于每周勾选规则。
+        if (IsHoliday(d)) return true;
         if (_cfg.WeekValleyDays is { Count: 7 } list)
         {
             // WeekValleyDays 顺序为周一..周日；DayOfWeek.Sunday=0，故先归一到 0..6（周一=0）
@@ -109,6 +130,7 @@ public class PeakSchedule
             NextTime = nxt?.Time,
             NextIsPeak = nxt?.IsPeak ?? !cur.IsPeak,
             AllDayValley = nxt is null && !cur.IsPeak,
+            TodayIsHoliday = IsHoliday(now.Date),
         };
     }
 

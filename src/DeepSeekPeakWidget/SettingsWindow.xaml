@@ -168,6 +168,13 @@
                     <CheckBox x:Name="WeekChk6" Content="周日" FontSize="11"/>
                 </StackPanel>
                 <Button x:Name="WeekendDefaultBtn" Content="恢复官方默认（仅周六/周日全天谷）" FontSize="11" HorizontalAlignment="Left" Padding="12,5" Margin="0,4,0,0" Click="WeekendDefaultBtn_Click"/>
+                <TextBlock Text="法定节假日（全天谷时）" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="0,10,0,0"/>
+                <TextBlock Text="官方规则：周一至周五（不含法定节假日）09:00-12:00、14:00-18:00 为高峰；周末与法定节假日全天按谷时。每行一个日期（yyyy-MM-dd）。内置 2026 年安排与 2027 年法定节日核心日；2027 年完整放假/调休安排待国务院公布后可在此补充。"
+                           FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,4"/>
+                <TextBox x:Name="HolidaysBox" AcceptsReturn="True" Height="96" FontSize="11"
+                         TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         PlaceholderText="每行一个日期，例如 2027-01-01"/>
+                <Button x:Name="HolidayDefaultBtn" Content="恢复内置节假日清单" FontSize="11" HorizontalAlignment="Left" Padding="12,5" Margin="0,4,0,0" Click="HolidayDefaultBtn_Click"/>
                 <Grid Margin="0,4,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -189,7 +196,7 @@
                 </Grid>
                 <CheckBox x:Name="ChangeChk" Content="时段切换时立即提醒" FontSize="12"/>
 
-                <TextBlock Text="API Key 仅保存在本地配置文件中，用于查询 DeepSeek 账户余额；留空则不显示余额。背景透明度只作用于亚克力背景，窗口内容保持不透明；背景效果为“无”时该设置不生效。定价刷新间隔到点会自动重读配置文件中的价格。峰时 09:00-12:00、14:00-18:00（北京时间），谷时价格减半；周六/周日全天按谷价。"
+                <TextBlock Text="API Key 仅保存在本地配置文件中，用于查询 DeepSeek 账户余额；留空则不显示余额。背景透明度只作用于亚克力背景，窗口内容保持不透明；背景效果为“无”时该设置不生效。定价刷新间隔到点会自动重读配置文件中的价格。峰时 09:00-12:00、14:00-18:00（北京时间，周一至周五，不含法定节假日），谷时价格减半；周六/周日与法定节假日全天按谷价。"
                            FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,8,0,4"/>
             </StackPanel>
         </ScrollViewer>

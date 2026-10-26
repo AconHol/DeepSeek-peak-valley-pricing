@@ -164,8 +164,10 @@
                     <StackPanel Spacing="6">
                         <TextBlock Text="API 价格（元 / 百万 tokens）" FontSize="11" FontWeight="SemiBold" Foreground="#8A94A6"/>
                         <Grid x:Name="PriceGrid"/>
-                        <TextBlock Text="价格与时段依据 DeepSeek 官方公告（2026-09-10 12:00 起生效），可在设置或配置文件中调整。"
+                        <TextBlock x:Name="PriceFootnote" Text="价格依据 DeepSeek 官方定价页，可在设置或配置文件中调整。"
                                    FontSize="9.5" Foreground="#6B7688" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="ExtraBillingText" Text="" FontSize="9.5" Foreground="#6B7688"
+                                   TextWrapping="Wrap" Visibility="Collapsed"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

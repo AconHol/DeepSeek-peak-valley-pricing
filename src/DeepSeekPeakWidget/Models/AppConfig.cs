@@ -77,13 +77,39 @@ public class AppConfig
     public List<bool> WeekValleyDays { get; set; } = new() { false, false, false, false, false, true, true };
     /// <summary>旧版“周末全天谷时”开关，仅用于旧配置兼容与别名同步。</summary>
     public bool WeekendAllValley { get; set; }
+    /// <summary>
+    /// 法定节假日（北京时间，yyyy-MM-dd），当天全天按谷时计费。
+    /// 官方规则：周一至周五（不含法定节假日）9:00-12:00、14:00-18:00 为高峰，其余时段（含周末与法定节假日全天）为空闲。
+    /// 2026 年安排见国办发明电〔2025〕7 号；2027 年安排待国务院公布，这里按法定节日核心日预置。
+    /// </summary>
+    public List<string> Holidays { get; set; } = new()
+    {
+        // 2026 年（已无待放假期，保留全年便于回看/回溯）
+        "2026-01-01", "2026-01-02", "2026-01-03",
+        "2026-02-15", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19",
+        "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-23",
+        "2026-04-04", "2026-04-05", "2026-04-06",
+        "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05",
+        "2026-06-19", "2026-06-20", "2026-06-21",
+        "2026-09-25", "2026-09-26", "2026-09-27",
+        "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05",
+        "2026-10-06", "2026-10-07",
+        // 2027 年法定节日核心日（《全国年节及纪念日放假办法》确定；完整放假/调休安排待国务院 2026 年 11 月公布后补充）
+        "2027-01-01",
+        "2027-02-05", "2027-02-06", "2027-02-07", "2027-02-08",
+        "2027-04-05",
+        "2027-05-01", "2027-05-02",
+        "2027-06-09",
+        "2027-09-15",
+        "2027-10-01", "2027-10-02", "2027-10-03",
+    };
     public NotifyConfig Notify { get; set; } = new();
     public int RefreshMinutes { get; set; } = 30;
     /// <summary>内置价格方案版本：官方调价后更新此值，旧配置的价格会被自动替换为新价。</summary>
-    public string PriceRevision { get; set; } = "2026-09-10";
+    public string PriceRevision { get; set; } = "2026-10-26";
     /// <summary>余额自动刷新间隔（秒，0=关闭自动刷新）。</summary>
     public int BalanceRefreshSeconds { get; set; } = 300;
-    /// <summary>V4.1 Flash（模型名 deepseek-flash）：2026-09-10 12:00 起官方降价后的价格。</summary>
+    /// <summary>V4.1 Flash（官方模型名 deepseek-flash，当前版本 DeepSeek-V4.1-Flash-1017）。</summary>
     public ModelPrice Flash { get; set; } = new()
     {
         Name = "V4.1 Flash",
@@ -91,19 +117,12 @@ public class AppConfig
         InputPeak = 2.00, InputValley = 1.00,
         OutputPeak = 8.00, OutputValley = 4.00,
     };
+    /// <summary>V4 Pro（官方模型名 deepseek-v4-pro，当前版本 DeepSeek-V4-Pro-0813）。</summary>
     public ModelPrice Pro { get; set; } = new()
     {
         Name = "V4 Pro",
         HitPeak = 0.30, HitValley = 0.15,
         InputPeak = 9.00, InputValley = 4.50,
         OutputPeak = 27.00, OutputValley = 13.50,
-    };
-    /// <summary>V4 Flash Vision-Exp 多模态模型（flash 系列，定价与 Flash 一致，沿用峰谷计费）。</summary>
-    public ModelPrice Vision { get; set; } = new()
-    {
-        Name = "V4 Flash Vision",
-        HitPeak = 0.04, HitValley = 0.02,
-        InputPeak = 2.00, InputValley = 1.00,
-        OutputPeak = 8.00, OutputValley = 4.00,
     };
 }

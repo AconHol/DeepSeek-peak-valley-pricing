@@ -823,6 +823,8 @@ public sealed partial class MainWindow : Window
         ScheduleHint.Foreground = NewBrush(subCol);
         PhaseSubText.Foreground = NewBrush(light ? "#6B6B6B" : "#9AA4B2");
         NextPhaseText.Foreground = NewBrush(light ? "#6B6B6B" : "#9AA4B2");
+        PriceFootnote.Foreground = NewBrush(light ? "#8A8A8A" : "#6B7688");
+        ExtraBillingText.Foreground = NewBrush(light ? "#8A8A8A" : "#6B7688");
         LegendPeakRect.Fill = _brushPeak;
         LegendValleyRect.Fill = _brushOk;
         LegendPeakText.Foreground = NewBrush(subCol);
@@ -1057,6 +1059,10 @@ public sealed partial class MainWindow : Window
                 : $"{_config.PeakWindows[i].Start}-{_config.PeakWindows[i].End}");
         }
         sb.Append("（其余为谷时）");
+        if (_config.Holidays is { Count: > 0 })
+        {
+            sb.Append("，法定节假日全天谷时");
+        }
         if (_config.WeekValleyDays is { Count: 7 } list && list.Any(x => x))
         {
             var dayNames = new[] { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
@@ -1139,9 +1145,28 @@ public sealed partial class MainWindow : Window
         AddPriceRow(_config.Flash, peak: true);
         AddPriceRow(_config.Pro, peak: false);
         AddPriceRow(_config.Pro, peak: true);
-        AddPriceRow(_config.Vision, peak: false);
-        AddPriceRow(_config.Vision, peak: true);
         UpdatePrices();
+        UpdatePriceFootnotes();
+    }
+
+    /// <summary>价格表脚注：数据核对日期 + 搜索/抓取 API 计费说明（2026-11-01 00:00 起收费）。</summary>
+    private void UpdatePriceFootnotes()
+    {
+        PriceFootnote.Text = $"价格依据 DeepSeek 官方定价页（{ConfigService.CurrentPriceRevision} 核对）；" +
+                             "可在设置或配置文件中调整。";
+
+        var chargeStart = new DateTime(2026, 11, 1, 0, 0, 0);
+        var now = _schedule.ScheduleNow;
+        if (now >= chargeStart)
+        {
+            ExtraBillingText.Text = "网页搜索 / 抓取 API：5 元 / 千次成功请求（2026-11-01 起计费）。";
+        }
+        else
+        {
+            var days = Math.Max(0, (int)Math.Ceiling((chargeStart - now).TotalDays));
+            ExtraBillingText.Text = $"网页搜索 / 抓取 API 将于 11-01 00:00 起计费：5 元 / 千次（还有 {days} 天）。";
+        }
+        ExtraBillingText.Visibility = _config.Window.Mode == "compact" ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void AddPriceRowHeader()
@@ -1190,9 +1215,15 @@ public sealed partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 2, 0, 2),
         };
-        if (model.Name == "V4 Flash Vision")
+        var tooltip = model.Name switch
         {
-            ToolTipService.SetToolTip(name, "DeepSeek-V4-Flash-Vision-Exp（flash 系列，定价与 V4.1 Flash 一致）");
+            "V4.1 Flash" => "deepseek-flash · DeepSeek-V4.1-Flash-1017（支持图像理解，旧名 deepseek-v4-flash / deepseek-v4-flash-vision-exp 已路由到该模型）",
+            "V4 Pro" => "deepseek-v4-pro · DeepSeek-V4-Pro-0813",
+            _ => null,
+        };
+        if (tooltip is not null)
+        {
+            ToolTipService.SetToolTip(name, tooltip);
         }
         Grid.SetColumn(name, 0);
         grid.Children.Add(name);
@@ -1353,14 +1384,16 @@ public sealed partial class MainWindow : Window
             PhaseTag.Foreground = color;
             PhaseText.Text = isPeak ? "峰时 · 全价" : "谷时 · 半价";
             PhaseText.Foreground = color;
-            PhaseSubText.Text = isPeak
-                ? "当前按全价计费，建议错峰使用"
-                : "API 价格按高峰时段的一半计费";
+            PhaseSubText.Text = phase.TodayIsHoliday
+                ? (isPeak ? "当前按全价计费" : "今日法定节假日 · 全天按谷时（半价）计费")
+                : isPeak
+                    ? "当前按全价计费，建议错峰使用"
+                    : "API 价格按高峰时段的一半计费";
 
             if (phase.AllDayValley)
             {
                 CountdownText.Text = "--:--:--";
-                NextPhaseText.Text = "今天全天谷时";
+                NextPhaseText.Text = phase.TodayIsHoliday ? "今天法定节假日 · 全天谷时" : "今天全天谷时";
                 _frac = 1;
             }
             else if (phase.NextTime is DateTime nt)
