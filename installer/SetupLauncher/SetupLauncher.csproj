@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <AssemblyName>DeepSeekWidgetSetup</AssemblyName>
+    <RootNamespace>DeepSeekWidgetSetup</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- 由 build-installer.ps1 在构建前把 msix / cer / Setup.ps1 放进 payload 目录 -->
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="payload\**\*" />
+  </ItemGroup>
+</Project>

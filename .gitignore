@@ -6,3 +6,6 @@ appxout/
 installer/_build/
 .vs/
 *.user
+
+# 安装器构建时临时放入的内嵌文件
+installer/SetupLauncher/payload/
