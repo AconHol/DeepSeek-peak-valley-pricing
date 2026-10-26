@@ -7,10 +7,10 @@
 ## 安装
 
 - 一键安装：使用 release 中的 `DeepSeek峰谷小组件-WinUI-安装程序.exe`，双击即可自动完成证书信任 + 安装/升级 + 启动（无需管理员，首次需系统允许旁加载）。
-- 一键脚本（安装证书 + 安装包 + 启动，推荐发给别人）：把 `DeepSeekWidget-Setup.cmd`（或中文名 `双击安装.cmd`）与 `.msix`、`.cer` 放在同一文件夹，双击即可；支持参数：
-  - `-Online`：本地没有安装包时，自动从 GitHub 最新 Release 下载 MSIX 与证书再安装；
-  - `-Uninstall`：卸载小组件；`-Reinstall`：同版本修复重装；`-NoLaunch`：装完不自动启动；
-  - `-MachineWide`：把证书装进本机存储（需要管理员，所有用户可用）；遇到证书/旁加载错误时脚本会自动提权重试。
+- 一键脚本（装证书 + 装/升级 MSIX + 启动，推荐发给别人）：把 `DeepSeekWidget-Setup.cmd`（或中文名 `双击安装.cmd`）与 `.msix`、`.cer` 放在同一文件夹，双击即可；
+  - 目录里没有安装包时（例如只把脚本发给别人），脚本会**自动从 GitHub 最新 Release 下载** MSIX 与证书再安装——「只发一个脚本」也能装；
+  - `-Offline` 关闭联网下载；`-Uninstall` 卸载；`-Reinstall` 同版本修复重装；`-NoLaunch` 装完不自动启动；
+  - `-MachineWide` 把证书装进本机存储（需要管理员，所有用户可用）；遇到证书/旁加载错误时脚本会自动提权重试。
 - 手动安装：解压 `DeepSeek峰谷小组件-WinUI-<版本>-安装包(发给其他人).zip`，双击 `双击安装.cmd`（或右键 `Add-AppDevPackage.ps1` → 使用 PowerShell 运行），自动信任证书并安装。
 - 发给别人：在 GitHub Releases 页下载 `DeepSeek峰谷小组件-WinUI-安装程序.exe` 直接发过去即可；对方电脑需 Windows 10/11 x64。
 

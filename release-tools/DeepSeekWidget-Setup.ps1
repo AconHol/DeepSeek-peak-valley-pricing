@@ -20,7 +20,10 @@
     指定 .cer 路径；默认自动查找脚本所在目录下的 *.cer。
 
 .PARAMETER Online
-    本地找不到安装包时，从 GitHub 最新 Release 下载 MSIX 与证书再安装。
+    保留参数（兼容旧用法）。默认行为已经是“本地没有安装包时自动从 GitHub 下载”。
+
+.PARAMETER Offline
+    禁止联网下载：本地没有 MSIX 时直接报错，适合离线环境。
 
 .PARAMETER MachineWide
     把证书同时安装到本机证书存储（所有用户可用）。需要管理员权限；
@@ -39,13 +42,14 @@
     powershell -NoProfile -ExecutionPolicy Bypass -File .\DeepSeekWidget-Setup.ps1
 
 .EXAMPLE
-    powershell -NoProfile -ExecutionPolicy Bypass -File .\DeepSeekWidget-Setup.ps1 -Online -NoLaunch
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\DeepSeekWidget-Setup.ps1 -Uninstall
 #>
 #Requires -Version 5.1
 param(
     [string]$Msix,
     [string]$Cert,
     [switch]$Online,
+    [switch]$Offline,
     [switch]$MachineWide,
     [switch]$Reinstall,
     [switch]$Uninstall,
@@ -99,6 +103,7 @@ function Invoke-Elevated {
     Write-Log '正在以管理员身份重新运行（会弹出 UAC 提示，请选择“是”）…'
     $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $PSCommandPath), '-MachineWide')
     if ($Online) { $argList += '-Online' }
+    if ($Offline) { $argList += '-Offline' }
     if ($NoLaunch) { $argList += '-NoLaunch' }
     if ($Reinstall) { $argList += '-Reinstall' }
     if ($Msix) { $argList += @('-Msix', ('"{0}"' -f $Msix)) }
@@ -253,15 +258,21 @@ function Resolve-Packages {
     if (-not $certPath) { $certPath = Find-LocalFile -Folder $Root -Patterns @('*.cer') }
 
     if (-not $msixPath) {
-        if ($Online) {
-            Write-Log '本地未找到 MSIX，改为从 GitHub 下载。'
-            $remote = Get-PackageFromGitHub
-            $msixPath = $remote.Msix
-            if (-not $certPath) { $certPath = $remote.Cert }
-        } else {
-            throw ('未找到 MSIX 安装包。请把 .msix 与本脚本放在同一文件夹，' +
-                   '或加 -Online 从 GitHub 下载。')
+        # 双击脚本（不带参数）时也能装：本地没有安装包就自动从 GitHub 最新 Release 下载。
+        # 想强制只离线安装，加 -Offline 即可。
+        if ($Offline) {
+            throw ('未找到 MSIX 安装包（-Offline 已禁用联网下载）。' +
+                   '请把 .msix 与本脚本放在同一文件夹后重试。')
         }
+        Write-Log '本地未找到 MSIX 安装包，改为从 GitHub 最新 Release 下载。'
+        try {
+            $remote = Get-PackageFromGitHub
+        } catch {
+            throw ('本地没有安装包，且从 GitHub 下载失败：{0}。' +
+                   '请检查网络，或改用完整安装包 zip（内含 msix 与本脚本）。' -f $_.Exception.Message)
+        }
+        $msixPath = $remote.Msix
+        if (-not $certPath) { $certPath = $remote.Cert }
     }
 
     if (-not $certPath) {
@@ -358,6 +369,11 @@ function Start-Widget {
     $package = Get-AppxPackage -Name $PkgName -ErrorAction SilentlyContinue
     if (-not $package) {
         Write-Log '未检测到已安装的小组件，无法启动。' 'WARN'
+        return
+    }
+    $running = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue
+    if ($running) {
+        Write-Log ("小组件已在运行（PID {0}），无需重复启动。" -f ($running | Select-Object -First 1).Id) 'OK'
         return
     }
     $aumid = '{0}!App' -f $package.PackageFamilyName
