@@ -8,6 +8,7 @@
 
 - **绿色版（免安装，推荐给不想安装的人）**：解压 `DeepSeekPeakWidget-portable-<版本>-win-x64.zip`，双击 `DeepSeekPeakWidget.exe` 即可运行。免安装、免证书、免管理员，也无需另装 .NET / Windows App SDK 运行库；开机自启用当前用户注册表 `Run` 项实现。
 - 一键安装：使用 release 中的 `DeepSeek峰谷小组件-WinUI-安装程序.exe`，双击即可自动完成证书信任 + 安装/升级 + 启动（无需管理员，首次需系统允许旁加载）。
+- **只装证书（一键）**：把 `安装证书.cmd`（或 `Install-Cert.cmd`）与 `pve-widget-cert.cer` 放在同一文件夹，双击即可把 `CN=PVEWidget Dev` 装进受信任根 / 受信任发布者 / 受信任人（当前用户，无需管理员）并自动校验；`-Remove` 卸载，`-MachineWide` 装进本机存储（需管理员）。
 - 一键脚本（装证书 + 装/升级 MSIX + 启动，推荐发给别人）：把 `DeepSeekWidget-Setup.cmd`（或中文名 `双击安装.cmd`）与 `.msix`、`.cer` 放在同一文件夹，双击即可；
   - 目录里没有安装包时（例如只把脚本发给别人），脚本会**自动从 GitHub 最新 Release 下载** MSIX 与证书再安装——「只发一个脚本」也能装；
   - `-Offline` 关闭联网下载；`-Uninstall` 卸载；`-Reinstall` 同版本修复重装；`-NoLaunch` 装完不自动启动；
