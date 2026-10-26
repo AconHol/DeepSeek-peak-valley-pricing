@@ -1,14 +1,10 @@
 @echo off
-rem One-click installer for the manual package (no PowerShell knowledge needed).
+rem Friendly entry (double-click). Real logic lives in DeepSeekWidget-Setup.ps1.
 cd /d "%~dp0"
-echo Installing DeepSeek Peak Valley Widget...
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "Add-AppDevPackage.ps1"
-if errorlevel 1 (
-  echo.
-  echo Install failed. Try: right-click this file -^> "Run as administrator",
-  echo or enable Developer Mode in Windows Settings and run again.
-) else (
-  echo.
-  echo Done. The widget should start shortly.
+if exist "%~dp0DeepSeekWidget-Setup.ps1" (
+  call "%~dp0DeepSeekWidget-Setup.cmd" %*
+  exit /b %ERRORLEVEL%
 )
-pause
+echo Fallback: legacy installer script not found, trying Add-AppDevPackage.ps1 ...
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Add-AppDevPackage.ps1"
+if "%~1"=="" pause
