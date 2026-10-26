@@ -7,7 +7,8 @@
 ## 安装
 
 - 一键安装：使用 release 中的 `DeepSeek峰谷小组件-WinUI-安装程序.exe`，双击即可自动完成证书信任 + 安装/升级 + 启动（无需管理员，首次需系统允许旁加载）。
-- 手动安装：解压 `DeepSeek峰谷小组件-WinUI-<版本>-安装包(发给其他人).zip`，运行 `Add-AppDevPackage.ps1` 自动信任证书并安装。
+- 手动安装：解压 `DeepSeek峰谷小组件-WinUI-<版本>-安装包(发给其他人).zip`，双击 `双击安装.cmd`（或右键 `Add-AppDevPackage.ps1` → 使用 PowerShell 运行），自动信任证书并安装。
+- 发给别人：在 GitHub Releases 页下载 `DeepSeek峰谷小组件-WinUI-安装程序.exe` 直接发过去即可；对方电脑需 Windows 10/11 x64。
 
 ## 峰谷规则（官方公告，2026-10-26 定价页核对）
 
